@@ -5,8 +5,8 @@ const room = mongoose.Schema({
   subjectName: { type: String }, // blue text
   topicName: { type: String }, // red text
   roomName: { type: String }, // maroon text
-  users: [{ type: String }],
-  fileName: { type: String }
+  path: { type: String },
+  error: { type: String, default: null }
 });
 
 const Room = mongoose.model("Room", room);
