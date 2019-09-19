@@ -24,6 +24,10 @@ async function scrape(counts) {
   try {
     let url = "http://192.168.1.110/VMTLobby/commons/index.jsp";
     driver = new Builder().forBrowser("chrome").build();
+    // await driver
+    //   .manage()
+    //   .window()
+    //   .setRect({ width: 1240, height: 1080, x: 0, y: 0 });
     let usernameSel = "input[name='j_username']";
     let passwordSel = "input[name='j_password']";
     let submitSel = "input[name='submit']";
@@ -82,7 +86,7 @@ async function scrape(counts) {
     );
 
     if (!currentSubjectCountTarget) {
-      currentSubjectCountTarget = subjectListItems.length;
+      currentSubjectCountTarget = subjectListItems.length - 1;
     }
     let subject = subjectListItems[subjectCount];
     let subjectName = await subject.getAttribute("innerText");
@@ -145,23 +149,24 @@ async function scrape(counts) {
     }
 
     // SAVE RESULTS
-    projectName = projectName.trim();
-    subjectName = subjectName.trim();
-    topicName = topicName.trim();
-    roomName = roomName.trim();
+    projectName = projectName.trim().replace(/[\/:]/g, ".");
+    subjectName = subjectName.trim().replace(/[\/:]/g, ".");
+    topicName = topicName.trim().replace(/[\/:]/g, ".");
+    roomName = roomName.trim().replace(/[\/:]/g, ".");
 
     // WAIT FOR FILE TO DOWNLOAD
     console.log("waiting for file to download...");
     await confirmFileDownloaded(roomName);
     const path = `/${projectName}/${subjectName}/${topicName}/${roomName}.jno`;
-    var cleanPath = path.replace(/[|&;$%@"<>()+,]/g, "");
+    // var cleanPath = path.replace(/[|&;$%@":<>()+,]/g, "");
+    console.log({ path });
     let results = {
       document: {
         projectName,
         subjectName,
         topicName,
         roomName,
-        path: cleanPath
+        path
       },
       counts: {
         roomCount,
@@ -306,7 +311,7 @@ function checkDirectoryRecursive(dirs) {
           }
         });
       } else if (err) {
-        reject(err);
+        resolve({ success: null, err: "couldnt make directory" });
       }
     });
   });
@@ -372,10 +377,10 @@ mongoose.connect(mongoURI, { useNewUrlParser: true }, (err, res) => {
     console.log(chalk.red("DB CONNECTION FAILED: " + err));
   } else {
     console.log(chalk.blue("DB CONNECTION SUCCESS" + mongoURI));
-    let projectCount = 1; // start at 1 because 0 is "All" we dont want all we want each project individually so we get its actual name instead of the name "All"
-    let subjectCount = 6;
+    let projectCount = 89; // start at 1 because 0 is "All" we dont want all we want each project individually so we get its actual name instead of the name "All"
+    let subjectCount = 1;
     let topicCount = 0;
-    let roomCount = 1;
+    let roomCount = 0;
     const counts = { projectCount, subjectCount, topicCount, roomCount };
     console.log(chalk.green("starting scrape"));
     recursiveScrape(counts);
