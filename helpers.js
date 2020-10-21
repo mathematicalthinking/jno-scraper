@@ -23,7 +23,7 @@ const getCurrentUrl = async function(webdriver) {
   try {
     url = await webdriver.getCurrentUrl();
   } catch (err) {
-    console.log(err);
+    console.log(err.message);
   }
   return url;
 };
@@ -50,7 +50,7 @@ const getWebElements = async function(webDriver, selector) {
   try {
     webElements = await webDriver.findElements(By.css(selector));
   } catch (err) {
-    console.log(err);
+    console.log(err.message);
   }
   return webElements;
 };
@@ -61,7 +61,7 @@ const getWebElementValue = async function(webDriver, selector) {
     webElement = await webDriver.findElement(By.css(selector));
     webValue = await webElement.getAttribute("value");
   } catch (err) {
-    console.log(err);
+    console.log(err.message);
   }
   return webValue;
 };
@@ -72,7 +72,7 @@ const getWebElementTooltip = async function(webDriver, selector) {
     webElement = await webDriver.findElement(By.css(selector));
     webValue = await webElement.getAttribute("data-tooltip");
   } catch (err) {
-    console.log(err);
+    console.log(err.message);
   }
   return webValue;
 };
@@ -102,7 +102,7 @@ const findAndGetText = async function(
       text = text.toLowerCase();
     }
   } catch (err) {
-    console.log(err);
+    console.log(err.message);
   }
   return text;
 };
@@ -124,7 +124,7 @@ const hasTooltipValue = async function(webDriver, selector, value) {
     let dataValue = await getWebElementTooltip(webDriver, selector);
     hasValue = dataValue === value ? true : false;
   } catch (err) {
-    console.log(err);
+    console.log(err.message);
   }
   return hasValue;
 };
@@ -219,7 +219,7 @@ const findInputAndType = async function(
       }
     }
   } catch (err) {
-    console.log(err);
+    console.log(err.message);
   }
   return;
 };
@@ -292,7 +292,7 @@ const selectOption = async function(webDriver, selector, item, isByCss) {
     await el.click();
     return el;
   } catch (err) {
-    console.log(err);
+    console.log(err.message);
     throw err;
   }
 };
@@ -328,7 +328,7 @@ const signup = async function(
           await findInputAndType(webDriver, inputs[input], user[input]);
         }
       } catch (err) {
-        console.log(err);
+        console.log(err.message);
       }
     }
   }
@@ -338,7 +338,7 @@ const signup = async function(
     }
     await findAndClickElement(webDriver, css.signup.submit);
   } catch (err) {
-    console.log(err);
+    console.log(err.message);
   }
 };
 
@@ -349,7 +349,7 @@ const clearElement = async function(webDriver, element) {
     ele = elements[0];
     await ele.clear();
   } catch (err) {
-    console.log(err);
+    console.log(err.message);
   }
 };
 const waitForUrlMatch = async function(webDriver, regex, timeout = timeoutMs) {
@@ -537,15 +537,16 @@ const waitForElementsChild = async function(
         }
         let el = els[0];
         // console.log("here we are: ", el);
-        return el.isDisplayed();
+        return el.isDisplayed() ? el : false;
       })
       .catch(err => {
-        console.log({ err });
+        console.log(err.message);
       });
   };
 
-  return webDriver.wait(conditionFn, timeout).catch(err => {
-    console.log(err);
+  return webDriver.wait(conditionFn, timeout)
+  .catch(err => {
+    console.log(err.message);
   });
 };
 const selectOptionByIndex = async function(
@@ -568,7 +569,7 @@ const selectOptionByIndex = async function(
     await el.click();
     return el;
   } catch (err) {
-    console.log(err);
+    console.log(err.message);
     throw err;
   }
 };
