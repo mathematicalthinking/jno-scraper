@@ -52,7 +52,22 @@ async function scrape(counts) {
       projectList = await driver.findElements(
         By.css("#communityList1 > option")
       );
-      projectCountTarget = projectList.length;
+      projectCountTarget = projectList.length - 1; // options are zero indexed so the last project is option #298
+    }
+
+    if (projectCount > projectCountTarget) {
+      // done
+      let results = {
+        document: null,
+        counts: {
+          roomCount,
+          topicCount,
+          subjectCount,
+          projectCount
+        }
+      };
+      return results;
+
     }
     let project;
     try {
@@ -88,42 +103,119 @@ async function scrape(counts) {
     if (!currentSubjectCountTarget) {
       currentSubjectCountTarget = subjectListItems.length - 1;
     }
+
+    if (subjectListItems.length === 0) {
+      console.log('Project has no subjects');
+      // project has no subjects
+      let results = {
+        document: null,
+        counts: {
+          roomCount,
+          topicCount,
+          subjectCount,
+          projectCount
+        }
+      };
+      return results;
+
+    }
     let subject = subjectListItems[subjectCount];
     let subjectName = await subject.getAttribute("innerText");
-    let subjectExpandBtn = await subject.findElement({ xpath: "./img[1]" });
+    // let subjectExpandBtn = await subject.findElement({ xpath: "./img[1]" });
+
+    let subjectExpandBtn = await helpers.waitForElementsChild(driver, subject, "./img[1]");
     await subjectExpandBtn.click();
-    await helpers.waitForElementsChild(driver, subject, "./ul[1]");
+    let topicList = await helpers.waitForElementsChild(driver, subject, "./ul[1]");
 
     // TOPIC INFO
-    let topicList = await subject.findElement({ xpath: "./ul[1]" });
-
+    // let topicList = await subject.findElement({ xpath: "./ul[1]" });
+    await driver.sleep(200);
+    let topicListEls = await topicList.findElements({ xpath: "./li" });
     if (!currentTopicCountTarget) {
-      topicListEls = await topicList.findElements({ xpath: "./li" });
+      // topicListEls = await topicList.findElements({ xpath: "./li" });
       currentTopicCountTarget = topicListEls.length;
+
     }
-    let topicListEl = await topicList.findElement({
-      xpath: `./li[${topicCount + 1}]`
-    });
-    let roomExpandBtn = await topicListEl.findElement({ xpath: "./img[1]" });
-    let topicLink = await topicListEl.findElement({ xpath: "./span/a" });
+
+    if (topicListEls.length === 0) {
+      // subject has no topics
+      console.log('subject has no topics');
+      let results = {
+        document: null,
+        counts: {
+          roomCount,
+          topicCount,
+          subjectCount,
+          projectCount
+        }
+      };
+      return results;
+
+    }
+
+
+    // let topicListEl = await topicList.findElement({
+    //   xpath: `./li[${topicCount + 1}]`
+    // });
+    let topicListEl = await helpers.waitForElementsChild(
+      driver,
+      topicList,
+      `./li[${topicCount + 1}]`
+    );
+
+    if (!topicListEl) {
+      console.log(`Topic list had ${topicListEls.length} topics but could not find topic ${topicCount + 1} `);
+    }
+
+    // let roomExpandBtn = await topicListEl.findElement({ xpath: "./img[1]" });
+    let roomExpandBtn = await helpers.waitForElementsChild(driver, topicListEl, "./img[1]");
+    // let topicLink = await topicListEl.findElement({ xpath: "./span/a" });
+    let topicLink = await helpers.waitForElementsChild(driver, topicListEl, "./span/a")
     topicName = await topicLink.getAttribute("innerText");
 
     // ROOM INFO
     await roomExpandBtn.click();
-    let roomList = await topicListEl.findElement({ xpath: "./ul[1]" });
+
+    let roomList = await helpers.waitForElementsChild(driver, topicListEl, "./ul[1]");
+    // let roomList = await topicListEl.findElement({ xpath: "./ul[1]" });
+    // console.log(`Found room list for topic ${topicName}`);
+    await driver.sleep(200);
+    let roomListEls = await roomList.findElements({ xpath: "./li" });
+    console.log(`Room List for ${topicName} has ${roomListEls.length} rooms`);
 
     if (!currentRoomCountTarget) {
-      roomListEls = await roomList.findElements({ xpath: "./li" });
       currentRoomCountTarget = roomListEls.length;
     }
-    await helpers.waitForElementsChild(
+
+    if (roomListEls.length === 0) {
+      // no rooms afte expanding topic
+      console.log('no rooms after expanding topic: ', topicName);
+      let results = {
+        document: null,
+        counts: {
+          roomCount,
+          topicCount,
+          subjectCount,
+          projectCount
+        }
+      };
+      return results;
+
+    }
+    let room = await helpers.waitForElementsChild(
       driver,
       roomList,
       `./li[${roomCount + 1}]`
     );
-    let room = await roomList.findElement({ xpath: `./li[${roomCount + 1}]` });
+    if (!room) {
+      console.log(`Room list had elements but no room found`);
+    }
+
+    // let room = await roomList.findElement({ xpath: `./li[${roomCount + 1}]` });
+    // console.log({room});
     roomName = await room.getAttribute("innerText");
-    let showDownloadBtn = await room.findElement({ xpath: "./img[1]" });
+    // let showDownloadBtn = await room.findElement({ xpath: "./img[1]" });
+    let showDownloadBtn = await helpers.waitForElementsChild(driver, room, "./img[1]");
     try {
       await showDownloadBtn.click();
     } catch (err) {
@@ -177,6 +269,7 @@ async function scrape(counts) {
     };
 
     if (error) {
+      console.log('results', results);
       results.document.error = error;
     }
     // results.counts.projectCount++;
@@ -199,7 +292,7 @@ async function confirmFileDownloaded(fileName) {
     const startTime = Date.now();
     console.log(startTime);
     const fileCheckerInterval = setInterval(() => {
-      fs.stat(`${`../../../../../Downloads/${fileName}.jno`}`, function(
+      fs.stat(`${`/Users/Dan/Downloads/${fileName}.jno`}`, function(
         err,
         stats
       ) {
@@ -224,24 +317,28 @@ async function confirmFileDownloaded(fileName) {
 async function recursiveScrape(counts) {
   try {
     const scrapeData = await scrape(counts);
-    const {
-      projectName,
-      subjectName,
-      topicName,
-      roomName
-    } = scrapeData.document;
-    const srcPath = `../../../../../Downloads/${roomName}.jno`;
-    const targetPath = `./JNOFiles/${projectName}/${subjectName}/${topicName}`;
-    await buildPaths(targetPath);
-    const { success, err } = await saveFile(
-      srcPath,
-      targetPath + `/${roomName}.jno`
-    );
-    if (err) {
-      scrapeData.document.error = err;
+    console.log({scrapeData})
+    if (scrapeData.document !== null) {
+      const {
+        projectName,
+        subjectName,
+        topicName,
+        roomName
+      } = scrapeData.document;
+      const srcPath = `/Users/Dan/Downloads/${roomName}.jno`;
+      const targetPath = `/Users/Dan/Desktop/21pstem/jno-scraper/JNOFiles/${projectName}/${subjectName}/${topicName}`;
+      await buildPaths(targetPath);
+      const { success, err } = await saveFile(
+        srcPath,
+        targetPath + `/${roomName}.jno`
+      );
+      if (err) {
+        scrapeData.document.error = err;
+      }
+      await saveToDb(scrapeData.document);
+      console.log(chalk.blue("saved to db"));
+
     }
-    await saveToDb(scrapeData.document);
-    console.log(chalk.blue("saved to db"));
     if (scrapeData.counts.projectCount > projectCountTarget) {
       console.log(chalk.green("Scrape complete!"));
       mongoose.connection.close();
@@ -298,13 +395,12 @@ function checkDirectoryRecursive(dirs) {
         }
       }
       //Check if error defined and the error code is "not exists"
-      if (err && (err.errno === 34 || err.errno === -4058)) {
+      if (err && (err.errno === -2 || err.errno === 34 || err.errno === -4058)) {
         //Create the directory, call the callback.
         fs.mkdir(dir, err => {
           if (err) {
             reject(err);
-          }
-          if (dirs.length > 0) {
+          } else if (dirs.length > 0) {
             resolve(checkDirectoryRecursive(dirs));
           } else {
             return resolve({ succes: "succes", err: null });
@@ -323,9 +419,10 @@ function saveFile(src, trg) {
       if (err) {
         console.log(chalk.red("err renaming: ", err));
         resolve({ success: null, err: "could not download" });
+      } else {
+        console.log(chalk.green("file saved: ", trg));
+        resolve({ success: "success", err: null });
       }
-      console.log(chalk.green("file saved: ", trg));
-      resolve({ success: "success", err: null });
     });
   });
 }
@@ -377,8 +474,8 @@ mongoose.connect(mongoURI, { useNewUrlParser: true }, (err, res) => {
     console.log(chalk.red("DB CONNECTION FAILED: " + err));
   } else {
     console.log(chalk.blue("DB CONNECTION SUCCESS" + mongoURI));
-    let projectCount = 89; // start at 1 because 0 is "All" we dont want all we want each project individually so we get its actual name instead of the name "All"
-    let subjectCount = 1;
+    let projectCount = 299; // start at 1 because 0 is "All" we dont want all we want each project individually so we get its actual name instead of the name "All"
+    let subjectCount = 0;
     let topicCount = 0;
     let roomCount = 0;
     const counts = { projectCount, subjectCount, topicCount, roomCount };
