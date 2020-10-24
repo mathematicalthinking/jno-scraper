@@ -22,7 +22,7 @@ async function scrape(counts) {
   let driver = null;
 
   try {
-    let url = "http://192.168.1.110/VMTLobby/commons/index.jsp";
+    let url = helpers.baseURL + "/VMTLobby/commons/index.jsp"; // http://192.168.1.110/VMTLobby/commons/index.jsp
     driver = new Builder().forBrowser("chrome").build();
     // await driver
     //   .manage()
@@ -42,6 +42,7 @@ async function scrape(counts) {
       await helpers.findInputAndType(driver, passwordSel, process.env.pw);
       await helpers.findAndClickElement(driver, submitSel);
       await helpers.waitForSelector(driver, communityListSel);
+      console.log(chalk.gray("Log in complete!"));
     }
 
     await login();
@@ -54,7 +55,7 @@ async function scrape(counts) {
       );
       projectCountTarget = projectList.length - 1; // options are zero indexed so the last project is option #298
     }
-
+    console.log(chalk.gray('Project Count Target: ', projectCountTarget));
     if (projectCount > projectCountTarget) {
       // done
       let results = {
@@ -214,6 +215,18 @@ async function scrape(counts) {
     // let room = await roomList.findElement({ xpath: `./li[${roomCount + 1}]` });
     // console.log({room});
     roomName = await room.getAttribute("innerText");
+    if (!room) {
+      console.log(`Room list had elements but no room found`);
+    }
+
+    let roomLink = await helpers.waitForElementsChild(
+      driver,
+      room,
+      `./img`
+    );
+    let CID = await roomLink.getAttribute("id");
+    console.log('CID: ', CID);
+    
     // let showDownloadBtn = await room.findElement({ xpath: "./img[1]" });
     let showDownloadBtn = await helpers.waitForElementsChild(driver, room, "./img[1]");
     try {
@@ -226,32 +239,50 @@ async function scrape(counts) {
       await showDownloadBtn.click();
     }
     await helpers.waitForElementsChild(driver, room, "./div[1]");
+    // DL phase start
+    // try {
+    //   await helpers.findAndDLElement(driver, "ul[id='subjectsList'] input[value='Save as JNO']");  // or div[id^='room_CID'] $TODO need to add .csv download, Need to refactor to get onClick and get()
+    // } catch (err) {
+    //   console.log(chalk.red("download btn error??"));
+    //   console.log(err);
+    //   console.log("trying again");
+    //   driver.sleep(2000);
+    //   try {
+    //     await helpers.findAndDLElement(driver, "div[id^='room_CID'] input[value='Save as JNO']");  //ul[@id='subjectsList']//input[@value='Save as JNO']
+    //   } catch (err) {
+    //     error = "download button couldnt be clicked";
+    //   }
+    // }
+    // URL generation method
+   // SAVE RESULTS
+   projectName = projectName.trim().replace(/[\/:]/g, ".");
+   subjectName = subjectName.trim().replace(/[\/:]/g, ".");
+   topicName = topicName.trim().replace(/[\/:]/g, ".");
+   roomName = roomName.trim().replace(/[\/:]/g, ".");
+
+
     try {
-      await helpers.findAndClickElement(driver, "input[value='Save as JNO']");
+      await helpers.findAndDLbyURL(driver, roomName, CID)
     } catch (err) {
       console.log(chalk.red("download btn error??"));
       console.log(err);
       console.log("trying again");
       driver.sleep(2000);
       try {
-        await helpers.findAndClickElement(driver, "input[value='Save as JNO']");
+        await helpers.findAndDLElement(driver, "div[id^='room_CID'] input[value='Save as JNO']");  //ul[@id='subjectsList']//input[@value='Save as JNO']
       } catch (err) {
         error = "download button couldnt be clicked";
       }
     }
 
-    // SAVE RESULTS
-    projectName = projectName.trim().replace(/[\/:]/g, ".");
-    subjectName = subjectName.trim().replace(/[\/:]/g, ".");
-    topicName = topicName.trim().replace(/[\/:]/g, ".");
-    roomName = roomName.trim().replace(/[\/:]/g, ".");
-
+ 
     // WAIT FOR FILE TO DOWNLOAD
     console.log("waiting for file to download...");
     await confirmFileDownloaded(roomName);
     const path = `/${projectName}/${subjectName}/${topicName}/${roomName}.jno`;
     // var cleanPath = path.replace(/[|&;$%@":<>()+,]/g, "");
     console.log({ path });
+    // DL Phase end
     let results = {
       document: {
         projectName,
@@ -290,9 +321,9 @@ async function scrape(counts) {
 async function confirmFileDownloaded(fileName) {
   return new Promise((resolve, reject) => {
     const startTime = Date.now();
-    console.log(startTime);
+    console.log("Startime: ", startTime);
     const fileCheckerInterval = setInterval(() => {
-      fs.stat(`${`/Users/Dan/Downloads/${fileName}.jno`}`, function(
+      fs.stat(`${`/Users/alexanderzook/Downloads/${fileName}.jno`}`, function(  // fs.stat(`${`/Users/Dan/Downloads/${fileName}.jno`}`
         err,
         stats
       ) {
@@ -317,7 +348,7 @@ async function confirmFileDownloaded(fileName) {
 async function recursiveScrape(counts) {
   try {
     const scrapeData = await scrape(counts);
-    console.log({scrapeData})
+    console.log('scrape data: ', {scrapeData})
     if (scrapeData.document !== null) {
       const {
         projectName,
@@ -325,8 +356,8 @@ async function recursiveScrape(counts) {
         topicName,
         roomName
       } = scrapeData.document;
-      const srcPath = `/Users/Dan/Downloads/${roomName}.jno`;
-      const targetPath = `/Users/Dan/Desktop/21pstem/jno-scraper/JNOFiles/${projectName}/${subjectName}/${topicName}`;
+      const srcPath = `/Users/alexanderzook/Downloads/${roomName}.jno`;
+      const targetPath = `/Users/alexanderzook/Documents/Data/21pstem/jno-scraper/ALLFiles/${projectName}/${subjectName}/${topicName}`;
       await buildPaths(targetPath);
       const { success, err } = await saveFile(
         srcPath,
@@ -474,12 +505,13 @@ mongoose.connect(mongoURI, { useNewUrlParser: true }, (err, res) => {
     console.log(chalk.red("DB CONNECTION FAILED: " + err));
   } else {
     console.log(chalk.blue("DB CONNECTION SUCCESS" + mongoURI));
-    let projectCount = 299; // start at 1 because 0 is "All" we dont want all we want each project individually so we get its actual name instead of the name "All"
+    let projectCount = 1; // start at 1 because 0 is "All" we dont want all we want each project individually so we get its actual name instead of the name "All"
     let subjectCount = 0;
     let topicCount = 0;
     let roomCount = 0;
     const counts = { projectCount, subjectCount, topicCount, roomCount };
-    console.log(chalk.green("starting scrape"));
+    console.log('Counts:', counts );
+    console.log(chalk.yellow("~~~~~~~~~~ "), chalk.green("Starting scrape"), chalk.yellow(" ~~~~~~~~~~"));
     recursiveScrape(counts);
   }
 });
