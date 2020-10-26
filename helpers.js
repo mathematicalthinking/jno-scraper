@@ -12,6 +12,8 @@ const path = require("path");
 const timeoutMs = 5000; // timeout per await
 const timeoutTestMsStr = "20s"; // timeout per test
 
+const baseURL = "http://oldvmt.mathematicalthinking.org";
+
 // const nconf = config.nconf;
 // const port = nconf.get('testPort');
 // const host = `http://localhost:${port}`;
@@ -23,7 +25,7 @@ const getCurrentUrl = async function(webdriver) {
   try {
     url = await webdriver.getCurrentUrl();
   } catch (err) {
-    console.log(err);
+    console.log(err.message);
   }
   return url;
 };
@@ -50,7 +52,17 @@ const getWebElements = async function(webDriver, selector) {
   try {
     webElements = await webDriver.findElements(By.css(selector));
   } catch (err) {
-    console.log(err);
+    console.log(err.message);
+  }
+  return webElements;
+};
+
+const getXPathElements = async function(webDriver, path) {
+  let webElements = [];
+  try {
+    webElements = await webDriver.findElements(By.xpath(path));
+  } catch (err) {
+    console.log(err.message);
   }
   return webElements;
 };
@@ -61,7 +73,7 @@ const getWebElementValue = async function(webDriver, selector) {
     webElement = await webDriver.findElement(By.css(selector));
     webValue = await webElement.getAttribute("value");
   } catch (err) {
-    console.log(err);
+    console.log(err.message);
   }
   return webValue;
 };
@@ -72,7 +84,7 @@ const getWebElementTooltip = async function(webDriver, selector) {
     webElement = await webDriver.findElement(By.css(selector));
     webValue = await webElement.getAttribute("data-tooltip");
   } catch (err) {
-    console.log(err);
+    console.log(err.message);
   }
   return webValue;
 };
@@ -102,7 +114,7 @@ const findAndGetText = async function(
       text = text.toLowerCase();
     }
   } catch (err) {
-    console.log(err);
+    console.log(err.message);
   }
   return text;
 };
@@ -124,7 +136,7 @@ const hasTooltipValue = async function(webDriver, selector, value) {
     let dataValue = await getWebElementTooltip(webDriver, selector);
     hasValue = dataValue === value ? true : false;
   } catch (err) {
-    console.log(err);
+    console.log(err.message);
   }
   return hasValue;
 };
@@ -136,6 +148,39 @@ const findAndClickElement = async function(webDriver, selector) {
   }
   return;
 };
+
+// New helper function to fix URL domain issue
+const findAndDLElement = async function(webDriver, selector) {
+  console.log("DL Element selector: ", selector);
+  let elements = await getWebElementByCss(webDriver, selector);
+  console.log('Found elements :', elements);
+  if (elements.length > 0) {
+    let oldURL = await elements[0].getAttribute("onclick");
+    oldURL = String(oldURL);
+    // console.log('oldURL: ', oldURL);
+    // old URL syntax: window.location.href="http://192.168.1.110:8080/vmtChat/nativeExport.jsp?channelID=CID:1374769578339&filename=Room_3"
+    oldURL = oldURL.substr(22);
+    oldURL = oldURL.substring(0, oldURL.length - 1);
+    let newURL = oldURL.replace("http://192.168.1.110:8080", baseURL);
+    console.log("Old url parsed: ", oldURL, "; Corrected URL: ", newURL);
+    return webDriver.get(newURL)
+  }
+  return;
+}
+
+// New helper function to fix URL domain issue, uses direct URL approach
+const findAndDLbyURL = async function(webDriver, roomName, CID) {
+    let newURL = baseURL + '/vmtChat/nativeExport.jsp?channelID=' + CID + '&filename=' + roomName;
+    console.log("Corrected URL for JNO DL: ", newURL);
+    return webDriver.get(newURL)
+}
+
+ // location.href="http://192.168.1.110:8080/vmtChat/logExport?channelID=CID:1430311635466&roomName=vmt math&reportType=1"
+const findCSVAndDLbyURL = async function(webDriver, roomName, CID) {
+  let newURL = baseURL + '/vmtChat/logExport?channelID=' + CID + '&roomName=' + roomName + '&reportType=1';
+  console.log("Corrected URL for CSV DL: ", newURL);
+  return webDriver.get(newURL)
+}
 
 const waitForAndClickElement = function(
   webDriver,
@@ -219,7 +264,7 @@ const findInputAndType = async function(
       }
     }
   } catch (err) {
-    console.log(err);
+    console.log(err.message);
   }
   return;
 };
@@ -292,7 +337,7 @@ const selectOption = async function(webDriver, selector, item, isByCss) {
     await el.click();
     return el;
   } catch (err) {
-    console.log(err);
+    console.log(err.message);
     throw err;
   }
 };
@@ -328,7 +373,7 @@ const signup = async function(
           await findInputAndType(webDriver, inputs[input], user[input]);
         }
       } catch (err) {
-        console.log(err);
+        console.log(err.message);
       }
     }
   }
@@ -338,7 +383,7 @@ const signup = async function(
     }
     await findAndClickElement(webDriver, css.signup.submit);
   } catch (err) {
-    console.log(err);
+    console.log(err.message);
   }
 };
 
@@ -349,7 +394,7 @@ const clearElement = async function(webDriver, element) {
     ele = elements[0];
     await ele.clear();
   } catch (err) {
-    console.log(err);
+    console.log(err.message);
   }
 };
 const waitForUrlMatch = async function(webDriver, regex, timeout = timeoutMs) {
@@ -537,15 +582,16 @@ const waitForElementsChild = async function(
         }
         let el = els[0];
         // console.log("here we are: ", el);
-        return el.isDisplayed();
+        return el.isDisplayed() ? el : false;
       })
       .catch(err => {
-        console.log({ err });
+        console.log(err.message);
       });
   };
 
-  return webDriver.wait(conditionFn, timeout).catch(err => {
-    console.log(err);
+  return webDriver.wait(conditionFn, timeout)
+  .catch(err => {
+    console.log(err.message);
   });
 };
 const selectOptionByIndex = async function(
@@ -568,7 +614,7 @@ const selectOptionByIndex = async function(
     await el.click();
     return el;
   } catch (err) {
-    console.log(err);
+    console.log(err.message);
     throw err;
   }
 };
@@ -635,3 +681,7 @@ module.exports.waitForAttributeToEql = waitForAttributeToEql;
 module.exports.logout = logout;
 module.exports.dismissWorkspaceTour = dismissWorkspaceTour;
 module.exports.waitForElementsChild = waitForElementsChild;
+module.exports.findAndDLElement = findAndDLElement;
+module.exports.findAndDLbyURL = findAndDLbyURL;
+module.exports.findCSVAndDLbyURL = findCSVAndDLbyURL;
+module.exports.baseURL = baseURL;
