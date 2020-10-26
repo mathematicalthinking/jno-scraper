@@ -22,7 +22,7 @@ async function scrape(counts) {
   let driver = null;
 
   try {
-    let url = helpers.baseURL + "/VMTLobby/commons/index.jsp"; // http://192.168.1.110/VMTLobby/commons/index.jsp
+    let url = helpers.baseURL + "/VMTLobby/commons/index.jsp"; // old: http://192.168.1.110/VMTLobby/commons/index.jsp
     driver = new Builder().forBrowser("chrome").build();
     // await driver
     //   .manage()
@@ -240,6 +240,7 @@ async function scrape(counts) {
     }
     await helpers.waitForElementsChild(driver, room, "./div[1]");
     // DL phase start
+    // Below is legacy code retained for educational curiosity: these selectors should work in theory, but did not work in practice, resulting in a refactor to URL generation
     // try {
     //   await helpers.findAndDLElement(driver, "ul[id='subjectsList'] input[value='Save as JNO']");  // or div[id^='room_CID'] $TODO need to add .csv download, Need to refactor to get onClick and get()
     // } catch (err) {
@@ -260,7 +261,7 @@ async function scrape(counts) {
    topicName = topicName.trim().replace(/[\/:]/g, ".");
    roomName = roomName.trim().replace(/[\/:]/g, ".");
 
-
+    // .jno DL
     try {
       await helpers.findAndDLbyURL(driver, roomName, CID)
     } catch (err) {
@@ -275,10 +276,26 @@ async function scrape(counts) {
       }
     }
 
+    // .csv DL
+    // try {
+    //   await helpers.findCSVAndDLbyURL(driver, roomName, CID)
+    // } catch (err) {
+    //   console.log(chalk.red("download btn error??"));
+    //   console.log(err);
+    //   console.log("trying again");
+    //   driver.sleep(2000);
+    //   try {
+    //     await helpers.findCSVAndDLbyURL(driver, "div[id^='room_CID'] input[value='Get Log: columns for each user']");  //ul[@id='subjectsList']//input[@value='Save as JNO']
+    //   } catch (err) {
+    //     error = "download button couldnt be clicked";
+    //   }
+    // }
+
  
     // WAIT FOR FILE TO DOWNLOAD
     console.log("waiting for file to download...");
     await confirmFileDownloaded(roomName);
+    // await confirmCSVDownloaded(roomName);
     const path = `/${projectName}/${subjectName}/${topicName}/${roomName}.jno`;
     // var cleanPath = path.replace(/[|&;$%@":<>()+,]/g, "");
     console.log({ path });
@@ -323,13 +340,40 @@ async function confirmFileDownloaded(fileName) {
     const startTime = Date.now();
     console.log("Startime: ", startTime);
     const fileCheckerInterval = setInterval(() => {
-      fs.stat(`${`/Users/alexanderzook/Downloads/${fileName}.jno`}`, function(  // fs.stat(`${`/Users/Dan/Downloads/${fileName}.jno`}`
+      fs.stat(`${`/Users/${process.env.whoami}/Downloads/${fileName}.jno`}`, function(  // fs.stat(`${`/Users/Dan/Downloads/${fileName}.jno`}`
         err,
         stats
       ) {
         if (stats) {
           clearInterval(fileCheckerInterval);
-          console.log("the file has been downloaded");
+          console.log("the .jno file has been downloaded");
+          resolve("success");
+        } else if (err) {
+          currentTime = Date.now();
+          // console.log({ currentTime: Date.now() });
+          if (currentTime - startTime > 10000) {
+            clearInterval(fileCheckerInterval);
+            resolve();
+          }
+          return;
+        }
+      });
+    }, 1000);
+  });
+}
+
+async function confirmCSVDownloaded(fileName) {
+  return new Promise((resolve, reject) => {
+    const startTime = Date.now();
+    console.log("Startime: ", startTime);
+    const fileCheckerInterval = setInterval(() => {
+      fs.stat(`${`/Users/${process.env.whoami}/Downloads/${fileName}.csv`}`, function(  // fs.stat(`${`/Users/Dan/Downloads/${fileName}.jno`}`
+        err,
+        stats
+      ) {
+        if (stats) {
+          clearInterval(fileCheckerInterval);
+          console.log("the .csv file has been downloaded");
           resolve("success");
         } else if (err) {
           currentTime = Date.now();
@@ -356,13 +400,18 @@ async function recursiveScrape(counts) {
         topicName,
         roomName
       } = scrapeData.document;
-      const srcPath = `/Users/alexanderzook/Downloads/${roomName}.jno`;
-      const targetPath = `/Users/alexanderzook/Documents/Data/21pstem/jno-scraper/ALLFiles/${projectName}/${subjectName}/${topicName}`;
+      const srcPath = `/Users/${process.env.whoami}/Downloads/${roomName}.jno`;
+      // const CSBsrcPatch = `/Users/${process.env.whoami}/Downloads/${roomName}.csv`;
+      const targetPath = `/Users/${process.env.whoami}/Documents/Data/21pstem/jno-scraper/ALLFiles/${projectName}/${subjectName}/${topicName}`;
       await buildPaths(targetPath);
       const { success, err } = await saveFile(
         srcPath,
         targetPath + `/${roomName}.jno`
       );
+      // const { CSVsuccess, CSVerr } = await saveFile(
+      //   CSBsrcPatch,
+      //   targetPath + `/${roomName}.csv`
+      // );
       if (err) {
         scrapeData.document.error = err;
       }

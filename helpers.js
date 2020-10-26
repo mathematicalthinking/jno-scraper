@@ -171,8 +171,15 @@ const findAndDLElement = async function(webDriver, selector) {
 // New helper function to fix URL domain issue, uses direct URL approach
 const findAndDLbyURL = async function(webDriver, roomName, CID) {
     let newURL = baseURL + '/vmtChat/nativeExport.jsp?channelID=' + CID + '&filename=' + roomName;
-    console.log("Corrected URL: ", newURL);
+    console.log("Corrected URL for JNO DL: ", newURL);
     return webDriver.get(newURL)
+}
+
+ // location.href="http://192.168.1.110:8080/vmtChat/logExport?channelID=CID:1430311635466&roomName=vmt math&reportType=1"
+const findCSVAndDLbyURL = async function(webDriver, roomName, CID) {
+  let newURL = baseURL + '/vmtChat/logExport?channelID=' + CID + '&roomName=' + roomName + '&reportType=1';
+  console.log("Corrected URL for CSV DL: ", newURL);
+  return webDriver.get(newURL)
 }
 
 const waitForAndClickElement = function(
@@ -676,4 +683,5 @@ module.exports.dismissWorkspaceTour = dismissWorkspaceTour;
 module.exports.waitForElementsChild = waitForElementsChild;
 module.exports.findAndDLElement = findAndDLElement;
 module.exports.findAndDLbyURL = findAndDLbyURL;
+module.exports.findCSVAndDLbyURL = findCSVAndDLbyURL;
 module.exports.baseURL = baseURL;
