@@ -72,6 +72,7 @@ async function scrape(counts) {
     }
     let project;
     try {
+      driver.sleep(550);  // reguarly needing retry- adding initial pause to increase intial success
       project = await helpers.selectOption(
         driver,
         communityListSel,
@@ -80,8 +81,8 @@ async function scrape(counts) {
       );
     } catch (err) {
       console.log(chalk.red("couldnt select options 😢"));
-      driver.sleep(2000);
       console.log("trying again");
+      driver.sleep(4000);
       project = await helpers.selectOption(
         driver,
         communityListSel,
@@ -232,7 +233,7 @@ async function scrape(counts) {
     try {
       await showDownloadBtn.click();
     } catch (err) {
-      console.log(chalk.red("showDownload btn IN NON INTERACTABLE???"));
+      console.log(chalk.red("showDownload btn IS NON INTERACTABLE???"));
       console.log(err);
       console.log(" trying again");
       driver.sleep(2000);
@@ -240,6 +241,8 @@ async function scrape(counts) {
     }
     await helpers.waitForElementsChild(driver, room, "./div[1]");
     // DL phase start
+    let csvLink = null;
+    let jnoLink = null;
     // Below is legacy code retained for educational curiosity: these selectors should work in theory, but did not work in practice, resulting in a refactor to URL generation
     // try {
     //   await helpers.findAndDLElement(driver, "ul[id='subjectsList'] input[value='Save as JNO']");  // or div[id^='room_CID'] $TODO need to add .csv download, Need to refactor to get onClick and get()
@@ -261,42 +264,89 @@ async function scrape(counts) {
    topicName = topicName.trim().replace(/[\/:]/g, ".");
    roomName = roomName.trim().replace(/[\/:]/g, ".");
 
+
     // .jno DL
     try {
-      await helpers.findAndDLbyURL(driver, roomName, CID)
+      jnoLink = await helpers.findAndDLbyURL(driver, roomName, CID)
     } catch (err) {
       console.log(chalk.red("download btn error??"));
       console.log(err);
-      console.log("trying again");
-      driver.sleep(2000);
-      try {
-        await helpers.findAndDLElement(driver, "div[id^='room_CID'] input[value='Save as JNO']");  //ul[@id='subjectsList']//input[@value='Save as JNO']
-      } catch (err) {
-        error = "download button couldnt be clicked";
-      }
+      // console.log("trying again");
+      // driver.sleep(2000);
+      // try {
+      //   await helpers.findAndDLElement(driver, "div[id^='room_CID'] input[value='Save as JNO']");  //ul[@id='subjectsList']//input[@value='Save as JNO']
+      // } catch (err) {
+        error = "JNO download couldnt be completed ";
+      // }
     }
 
+    // Check if the room is empty TODO FEATURE DEVELOPMENT PAUSED
+  //   try {
+  //     let CIDSelector = CID.split(":")[1];
+  //     driver.sleep(2000);
+  //     let roomTable = await helpers.getWebElements(driver, `tbody[id$='${CIDSelector}']`)
+  //     let roomRows = await helpers.waitForElementsChild(
+  //       driver,
+  //       roomTable[0],
+  //       `./tr`
+  //     );
+  //     // let roomRows = await helpers.waitForElementsChild(
+  //     //   driver,
+  //     //   roomRows[0],
+  //     //   `./tr`
+  //     // );
+
+  //     // let roomStatus = await roomRows[0].getAttribute("colspan");
+  //     // console.log("This first row has a colspan of :", roomStatus);
+  //   } catch (err) {
+  //     console.log(error);
+  //   }
+  //   // let roomTable = await helpers.waitForElementsChild(
+  //   //   driver,
+  //   //   room,
+  //   //   `./tbody`
+  //   // );
+  
+  //   // let roomMessage = 'Room has ' + roomRows.length + ' participants';
+  // //   if ( roomRows.length == 1) {
+  // //     try {
+  // //       await helpers.waitForElementsChild(
+  // //         driver,
+  // //         roomRows,
+  // //         `./i`
+  // //       );
+  // //       roomMessage = await roomStatus.getAttribute("innerText");
+  // //       console.log(chalk.red("Empty room?"), roomMessage);
+  // //     } catch (err) {
+  // //       console.log(chalk.red("Room msg error??"));
+  // //   }
+  // // }
+  //   // console.log('Room Message: ', roomMessage);
+
     // .csv DL
-    // try {
-    //   await helpers.findCSVAndDLbyURL(driver, roomName, CID)
-    // } catch (err) {
-    //   console.log(chalk.red("download btn error??"));
-    //   console.log(err);
-    //   console.log("trying again");
-    //   driver.sleep(2000);
-    //   try {
-    //     await helpers.findCSVAndDLbyURL(driver, "div[id^='room_CID'] input[value='Get Log: columns for each user']");  //ul[@id='subjectsList']//input[@value='Save as JNO']
-    //   } catch (err) {
-    //     error = "download button couldnt be clicked";
-    //   }
-    // }
+    try {
+      csvLink = await helpers.findCSVAndDLbyURL(driver, roomName, CID)
+    } catch (err) {
+      console.log(chalk.red("download btn error??"));
+      console.log(err);
+      // console.log("trying again");
+      // driver.sleep(2000);
+      // try {
+      //   await helpers.findCSVAndDLbyURL(driver, "div[id^='room_CID'] input[value='Get Log: columns for each user']");  //ul[@id='subjectsList']//input[@value='Save as JNO']
+      // } catch (err) {
+      if (!error) {
+        error = "CSV download couldnt be completed ";
+      } else error += "JNO and CSV downloads could not be completed "
+      // }
+    }
 
  
     // WAIT FOR FILE TO DOWNLOAD
     console.log("waiting for file to download...");
     await confirmFileDownloaded(roomName);
-    // await confirmCSVDownloaded(roomName);
+    await confirmCSVDownloaded(roomName);
     const path = `/${projectName}/${subjectName}/${topicName}/${roomName}.jno`;
+    // const csvPath = `/${projectName}/${subjectName}/${topicName}/${roomName}.csv`;
     // var cleanPath = path.replace(/[|&;$%@":<>()+,]/g, "");
     console.log({ path });
     // DL Phase end
@@ -306,7 +356,9 @@ async function scrape(counts) {
         subjectName,
         topicName,
         roomName,
-        path
+        path,
+        csvLink,
+        jnoLink
       },
       counts: {
         roomCount,
@@ -338,9 +390,9 @@ async function scrape(counts) {
 async function confirmFileDownloaded(fileName) {
   return new Promise((resolve, reject) => {
     const startTime = Date.now();
-    console.log("Startime: ", startTime);
+    // console.log("Startime: ", startTime);
     const fileCheckerInterval = setInterval(() => {
-      fs.stat(`${`/Users/${process.env.whoami}/Downloads/${fileName}.jno`}`, function(  // fs.stat(`${`/Users/Dan/Downloads/${fileName}.jno`}`
+      fs.stat(`${`/Users/${process.env.whoami}/Downloads/${fileName}.jno`}`, function (
         err,
         stats
       ) {
@@ -365,9 +417,9 @@ async function confirmFileDownloaded(fileName) {
 async function confirmCSVDownloaded(fileName) {
   return new Promise((resolve, reject) => {
     const startTime = Date.now();
-    console.log("Startime: ", startTime);
+    // console.log("Startime: ", startTime);
     const fileCheckerInterval = setInterval(() => {
-      fs.stat(`${`/Users/${process.env.whoami}/Downloads/${fileName}.csv`}`, function(  // fs.stat(`${`/Users/Dan/Downloads/${fileName}.jno`}`
+      fs.stat(`${`/Users/${process.env.whoami}/Downloads/${fileName}_multicolumn.csv`}`, function(  // fs.stat(`${`/Users/Dan/Downloads/${fileName}.jno`}`
         err,
         stats
       ) {
@@ -401,19 +453,19 @@ async function recursiveScrape(counts) {
         roomName
       } = scrapeData.document;
       const srcPath = `/Users/${process.env.whoami}/Downloads/${roomName}.jno`;
-      // const CSBsrcPatch = `/Users/${process.env.whoami}/Downloads/${roomName}.csv`;
+      const CSVsrcPatch = `/Users/${process.env.whoami}/Downloads/${roomName}_multicolumn.csv`;
       const targetPath = `/Users/${process.env.whoami}/Documents/Data/21pstem/jno-scraper/ALLFiles/${projectName}/${subjectName}/${topicName}`;
       await buildPaths(targetPath);
       const { success, err } = await saveFile(
         srcPath,
         targetPath + `/${roomName}.jno`
       );
-      // const { CSVsuccess, CSVerr } = await saveFile(
-      //   CSBsrcPatch,
-      //   targetPath + `/${roomName}.csv`
-      // );
-      if (err) {
-        scrapeData.document.error = err;
+      const { CSVsuccess, CSVerr } = await saveFile(
+        CSVsrcPatch,
+        targetPath + `/${roomName}.csv`
+      );
+      if (err || CSVerr) {
+        scrapeData.document.error = err + CSVerr;
       }
       await saveToDb(scrapeData.document);
       console.log(chalk.blue("saved to db"));
@@ -498,12 +550,13 @@ function saveFile(src, trg) {
     fs.rename(src, trg, err => {
       if (err) {
         console.log(chalk.red("err renaming: ", err));
-        resolve({ success: null, err: "could not download" });
+        resolve({ success: null, err: "could not download" + src });
       } else {
         console.log(chalk.green("file saved: ", trg));
         resolve({ success: "success", err: null });
       }
     });
+    // reject(new Error("Save file process error!"))
   });
 }
 

@@ -162,6 +162,7 @@ const findAndDLElement = async function(webDriver, selector) {
     oldURL = oldURL.substr(22);
     oldURL = oldURL.substring(0, oldURL.length - 1);
     let newURL = oldURL.replace("http://192.168.1.110:8080", baseURL);
+    newURL = encodeURI(newURL);
     console.log("Old url parsed: ", oldURL, "; Corrected URL: ", newURL);
     return webDriver.get(newURL)
   }
@@ -170,16 +171,28 @@ const findAndDLElement = async function(webDriver, selector) {
 
 // New helper function to fix URL domain issue, uses direct URL approach
 const findAndDLbyURL = async function(webDriver, roomName, CID) {
-    let newURL = baseURL + '/vmtChat/nativeExport.jsp?channelID=' + CID + '&filename=' + roomName;
-    console.log("Corrected URL for JNO DL: ", newURL);
-    return webDriver.get(newURL)
+  let newURL = baseURL + '/vmtChat/nativeExport.jsp?channelID=' + CID + '&filename=' + roomName;
+  newURL = encodeURI(newURL);
+  console.log("Corrected URL for JNO DL: ", newURL);
+  try {
+    webDriver.get(newURL)
+  } catch (err) {
+    console.log(err.message);
+  }
+    return newURL;
 }
 
  // location.href="http://192.168.1.110:8080/vmtChat/logExport?channelID=CID:1430311635466&roomName=vmt math&reportType=1"
 const findCSVAndDLbyURL = async function(webDriver, roomName, CID) {
   let newURL = baseURL + '/vmtChat/logExport?channelID=' + CID + '&roomName=' + roomName + '&reportType=1';
+  newURL = encodeURI(newURL);
   console.log("Corrected URL for CSV DL: ", newURL);
-  return webDriver.get(newURL)
+  try {
+    webDriver.get(newURL)
+  } catch (err) {
+    console.log(err.message);
+  }
+  return newURL;
 }
 
 const waitForAndClickElement = function(
@@ -337,7 +350,7 @@ const selectOption = async function(webDriver, selector, item, isByCss) {
     await el.click();
     return el;
   } catch (err) {
-    console.log(err.message);
+    console.log('Select Option error! - ', err.message);
     throw err;
   }
 };
