@@ -55,7 +55,7 @@ async function scrape(counts) {
       );
       projectCountTarget = projectList.length - 1; // options are zero indexed so the last project is option #298
     }
-    console.log(chalk.gray("Project Count Target: ", projectCountTarget));
+    console.log(chalk.gray('Project Count Target: ', projectCountTarget));
     if (projectCount > projectCountTarget) {
       // done
       let results = {
@@ -64,13 +64,13 @@ async function scrape(counts) {
           roomCount,
           topicCount,
           subjectCount,
-          projectCount,
-        },
+          projectCount
+        }
       };
       return results;
+
     }
     let project;
-    driver.sleep(1250); // reguarly needing retry- adding initial pause to increase intial success
     try {
       project = await helpers.selectOption(
         driver,
@@ -80,8 +80,8 @@ async function scrape(counts) {
       );
     } catch (err) {
       console.log(chalk.red("couldnt select options 😢"));
+      driver.sleep(2000);
       console.log("trying again");
-      driver.sleep(4000);
       project = await helpers.selectOption(
         driver,
         communityListSel,
@@ -89,33 +89,24 @@ async function scrape(counts) {
         true
       );
     }
-    // PRINT Status: Project
-    // if (project) console.log(chalk.cyan('Project found!...'));
     let projectName = await project.getAttribute("innerText");
     await project.click();
     await helpers.findAndClickElement(driver, "input[name='refreshButton']");
     await driver.sleep(1000);
     await helpers.waitForSelector(driver, "#subjectsList");
-    // PRINT Status: Project Name
-    if (projectName) console.log(chalk.cyan("Project name: ", projectName));
+
     // PARSE SUBJECT INFO
     let subjectListItems = await helpers.getWebElements(
       driver,
       subjectListItemSel
     );
 
-    // PRINT Status: Project Name
-    if (subjectListItems)
-      console.log(
-        chalk.cyan(projectName, " has ", subjectListItems.length, " subjects.")
-      );
-
     if (!currentSubjectCountTarget) {
       currentSubjectCountTarget = subjectListItems.length - 1;
     }
 
     if (subjectListItems.length === 0) {
-      console.log("Project has no subjects");
+      console.log('Project has no subjects');
       // project has no subjects
       let results = {
         document: null,
@@ -123,31 +114,20 @@ async function scrape(counts) {
           roomCount,
           topicCount,
           subjectCount,
-          projectCount,
-        },
+          projectCount
+        }
       };
       return results;
+
     }
     let subject = subjectListItems[subjectCount];
     let subjectName = await subject.getAttribute("innerText");
-    // PRINT Status: Subject Name
-    if (subjectName)
-      console.log(chalk.cyan(subjectName, " is subject #: ", subjectCount));
     // let subjectExpandBtn = await subject.findElement({ xpath: "./img[1]" });
 
-    let subjectExpandBtn = await helpers.waitForElementsChild(
-      driver,
-      subject,
-      "./img[1]"
-    );
+    let subjectExpandBtn = await helpers.waitForElementsChild(driver, subject, "./img[1]");
     await subjectExpandBtn.click();
-    let topicList = await helpers.waitForElementsChild(
-      driver,
-      subject,
-      "./ul[1]"
-    );
-    // PRINT Status: Topic List
-    if (topicList) console.log(chalk.cyan("Topic List found!"));
+    let topicList = await helpers.waitForElementsChild(driver, subject, "./ul[1]");
+
     // TOPIC INFO
     // let topicList = await subject.findElement({ xpath: "./ul[1]" });
     await driver.sleep(200);
@@ -155,86 +135,54 @@ async function scrape(counts) {
     if (!currentTopicCountTarget) {
       // topicListEls = await topicList.findElements({ xpath: "./li" });
       currentTopicCountTarget = topicListEls.length;
+
     }
-    // PRINT Status: Topic List Elements
-    if (topicListEls)
-      console.log(chalk.cyan("Topic List elements :", topicListEls.length));
 
     if (topicListEls.length === 0) {
       // subject has no topics
-      console.log("subject has no topics");
+      console.log('subject has no topics');
       let results = {
         document: null,
         counts: {
           roomCount,
           topicCount,
           subjectCount,
-          projectCount,
-        },
+          projectCount
+        }
       };
       return results;
+
     }
+
 
     // let topicListEl = await topicList.findElement({
     //   xpath: `./li[${topicCount + 1}]`
     // });
-    await driver.sleep(250);
     let topicListEl = await helpers.waitForElementsChild(
       driver,
       topicList,
       `./li[${topicCount + 1}]`
     );
 
-    // PRINT Status: Topic Elementt
-    if (topicListEl) console.log(chalk.cyan("Topic element found!"));
-
     if (!topicListEl) {
-      console.log(
-        `Topic list had ${
-          topicListEls.length
-        } topics but could not find topic ${topicCount + 1} `
-      );
+      console.log(`Topic list had ${topicListEls.length} topics but could not find topic ${topicCount + 1} `);
     }
 
     // let roomExpandBtn = await topicListEl.findElement({ xpath: "./img[1]" });
-    let roomExpandBtn = await helpers.waitForElementsChild(
-      driver,
-      topicListEl,
-      "./img[1]"
-    );
-    // PRINT Status: Topic Name
-    if (roomExpandBtn) console.log(chalk.cyan("Room expand button located!"));
-
+    let roomExpandBtn = await helpers.waitForElementsChild(driver, topicListEl, "./img[1]");
     // let topicLink = await topicListEl.findElement({ xpath: "./span/a" });
-    let topicLink = await helpers.waitForElementsChild(
-      driver,
-      topicListEl,
-      "./span/a"
-    );
+    let topicLink = await helpers.waitForElementsChild(driver, topicListEl, "./span/a")
     topicName = await topicLink.getAttribute("innerText");
-
-    // PRINT Status: Topic Name
-    if (topicName) console.log(chalk.cyan("Topic found:", topicName));
 
     // ROOM INFO
     await roomExpandBtn.click();
 
-    let roomList = await helpers.waitForElementsChild(
-      driver,
-      topicListEl,
-      "./ul[1]"
-    );
+    let roomList = await helpers.waitForElementsChild(driver, topicListEl, "./ul[1]");
     // let roomList = await topicListEl.findElement({ xpath: "./ul[1]" });
     // console.log(`Found room list for topic ${topicName}`);
-    await driver.sleep(250);
+    await driver.sleep(200);
     let roomListEls = await roomList.findElements({ xpath: "./li" });
-
-    // PRINT Status: Topic rooms
-    console.log(
-      chalk.cyan(
-        `...Room List for ${topicName} has ${roomListEls.length} rooms`
-      )
-    );
+    console.log(`Room List for ${topicName} has ${roomListEls.length} rooms`);
 
     if (!currentRoomCountTarget) {
       currentRoomCountTarget = roomListEls.length;
@@ -242,129 +190,115 @@ async function scrape(counts) {
 
     if (roomListEls.length === 0) {
       // no rooms afte expanding topic
-      console.log("no rooms after expanding topic: ", topicName);
+      console.log('no rooms after expanding topic: ', topicName);
       let results = {
         document: null,
         counts: {
           roomCount,
           topicCount,
           subjectCount,
-          projectCount,
-        },
+          projectCount
+        }
       };
       return results;
-    }
 
-    await driver.sleep(250);
-    // let room = await roomList.findElement({ xpath: `./li[${roomCount + 1}]` });
+    }
     let room = await helpers.waitForElementsChild(
       driver,
       roomList,
       `./li[${roomCount + 1}]`
     );
-    try {
-      roomName = await room.getAttribute("innerText");
-    } catch (err){
-      console.log(chalk.red('Room error :', err))
-      console.log(chalk.gray(`Trying to find the room again...`));
-      await driver.sleep(2000);
-      if (!room) {
-        console.log(chalk.cyan.bold(`Room list had elements but no room found`));
-        room = await helpers.waitForElementsChild(
-          driver,
-          roomList,
-          `./li[${roomCount + 1}]`
-        );
-      }
-      roomName = await room.getAttribute("innerText");
-    }
-  
-    // PRINT Status: Room Name
-    if (roomName) console.log(chalk.cyan("Room found:", roomName));
-
-    await driver.sleep(250);
-    let roomLink = await helpers.waitForElementsChild(driver, room, `./img`);
-    let CID;
-    try {
-      CID = await roomLink.getAttribute("id");
-    } catch (err){
-      console.log(chalk.red('CID error :', err))
-      console.log(chalk.gray(`Trying to get the CID again...`));
-      await driver.sleep(2000);
-      if (!roomLink) {
-        console.log(chalk.cyan.bold(`No Room-link element found!`));
-        roomLink = await helpers.waitForElementsChild(driver, room, `./img`);
-      }
-      CID = await roomLink.getAttribute("id");
+    if (!room) {
+      console.log(`Room list had elements but no room found`);
     }
 
-   
-    // PRINT Status: CID
-    if (CID) console.log(chalk.cyan("CID found:", CID));
+    // let room = await roomList.findElement({ xpath: `./li[${roomCount + 1}]` });
+    // console.log({room});
+    roomName = await room.getAttribute("innerText");
+    if (!room) {
+      console.log(`Room list had elements but no room found`);
+    }
 
+    let roomLink = await helpers.waitForElementsChild(
+      driver,
+      room,
+      `./img`
+    );
+    let CID = await roomLink.getAttribute("id");
+    console.log('CID: ', CID);
+    
     // let showDownloadBtn = await room.findElement({ xpath: "./img[1]" });
-    // let showDownloadBtn = await helpers.waitForElementsChild(driver, room, "./img[1]");
-    // try {
-    //   await showDownloadBtn.click();
-    // } catch (err) {
-    //   console.log(chalk.red("showDownload btn IS NON INTERACTABLE???"));
-    //   console.log(err);
-    //   console.log(" trying again");
-    //   driver.sleep(2000);
-    //   await showDownloadBtn.click();
-    // }
-    // await helpers.waitForElementsChild(driver, room, "./div[1]");
+    let showDownloadBtn = await helpers.waitForElementsChild(driver, room, "./img[1]");
+    try {
+      await showDownloadBtn.click();
+    } catch (err) {
+      console.log(chalk.red("showDownload btn IN NON INTERACTABLE???"));
+      console.log(err);
+      console.log(" trying again");
+      driver.sleep(2000);
+      await showDownloadBtn.click();
+    }
+    await helpers.waitForElementsChild(driver, room, "./div[1]");
     // DL phase start
-
-    // Legacy code removed for CSS selectors, new approach URL generation. See other/old branch for code
-
+    // Below is legacy code retained for educational curiosity: these selectors should work in theory, but did not work in practice, resulting in a refactor to URL generation
+    // try {
+    //   await helpers.findAndDLElement(driver, "ul[id='subjectsList'] input[value='Save as JNO']");  // or div[id^='room_CID'] $TODO need to add .csv download, Need to refactor to get onClick and get()
+    // } catch (err) {
+    //   console.log(chalk.red("download btn error??"));
+    //   console.log(err);
+    //   console.log("trying again");
+    //   driver.sleep(2000);
+    //   try {
+    //     await helpers.findAndDLElement(driver, "div[id^='room_CID'] input[value='Save as JNO']");  //ul[@id='subjectsList']//input[@value='Save as JNO']
+    //   } catch (err) {
+    //     error = "download button couldnt be clicked";
+    //   }
+    // }
     // URL generation method
-    let csvLink = null;
-    let jnoLink = null;
-    // SAVE RESULTS
-    projectName = projectName.trim().replace(/[\/:]/g, ".");
-    subjectName = subjectName.trim().replace(/[\/:]/g, ".");
-    topicName = topicName.trim().replace(/[\/:]/g, ".");
-    roomName = roomName.trim().replace(/[\/:]/g, ".");
+   // SAVE RESULTS
+   projectName = projectName.trim().replace(/[\/:]/g, ".");
+   subjectName = subjectName.trim().replace(/[\/:]/g, ".");
+   topicName = topicName.trim().replace(/[\/:]/g, ".");
+   roomName = roomName.trim().replace(/[\/:]/g, ".");
 
     // .jno DL
     try {
-      jnoLink = await helpers.findAndDLbyURL(driver, roomName, CID);
-    } catch (err) {
-      console.log(chalk.red("download error??"));
-      console.log("JNO Dl error: ", err);
-      error = "JNO download couldnt be completed ";
-    }
-
-    // PRINT Status: JNO Link
-    if (jnoLink) console.log(chalk.cyan("JNO Link: ", jnoLink));
-
-    // Check if the room is empty and skip CSV dl, TODO FEATURE DEVELOPMENT PAUSED, see other Branch
-
-    // .csv DL
-    try {
-      csvLink = await helpers.findCSVAndDLbyURL(driver, roomName, CID);
+      await helpers.findAndDLbyURL(driver, roomName, CID)
     } catch (err) {
       console.log(chalk.red("download btn error??"));
-      console.log("CSV Dl error: ", err);
-      if (!error) {
-        error = "CSV download couldnt be completed ";
-      } else error += "JNO and CSV downloads could not be completed ";
+      console.log(err);
+      console.log("trying again");
+      driver.sleep(2000);
+      try {
+        await helpers.findAndDLElement(driver, "div[id^='room_CID'] input[value='Save as JNO']");  //ul[@id='subjectsList']//input[@value='Save as JNO']
+      } catch (err) {
+        error = "download button couldnt be clicked";
+      }
     }
 
-    // PRINT Status: CSV Link
-    if (csvLink) console.log(chalk.cyan("CSV Link:", csvLink));
+    // .csv DL
+    // try {
+    //   await helpers.findCSVAndDLbyURL(driver, roomName, CID)
+    // } catch (err) {
+    //   console.log(chalk.red("download btn error??"));
+    //   console.log(err);
+    //   console.log("trying again");
+    //   driver.sleep(2000);
+    //   try {
+    //     await helpers.findCSVAndDLbyURL(driver, "div[id^='room_CID'] input[value='Get Log: columns for each user']");  //ul[@id='subjectsList']//input[@value='Save as JNO']
+    //   } catch (err) {
+    //     error = "download button couldnt be clicked";
+    //   }
+    // }
 
+ 
     // WAIT FOR FILE TO DOWNLOAD
-    console.log("Waiting for file to download...");
+    console.log("waiting for file to download...");
     await confirmFileDownloaded(roomName);
-    await confirmCSVDownloaded(roomName);
+    // await confirmCSVDownloaded(roomName);
     const path = `/${projectName}/${subjectName}/${topicName}/${roomName}.jno`;
-    // const csvPath = `/${projectName}/${subjectName}/${topicName}/${roomName}.csv`;
     // var cleanPath = path.replace(/[|&;$%@":<>()+,]/g, "");
-    // console.log({ path });
-    // PRINT Status: JNO Link
-    if (jnoLink) console.log(chalk.cyan("Files saved to: ", path));
+    console.log({ path });
     // DL Phase end
     let results = {
       document: {
@@ -372,20 +306,18 @@ async function scrape(counts) {
         subjectName,
         topicName,
         roomName,
-        path,
-        csvLink,
-        jnoLink,
+        path
       },
       counts: {
         roomCount,
         topicCount,
         subjectCount,
-        projectCount,
-      },
+        projectCount
+      }
     };
 
     if (error) {
-      console.log("results", results);
+      console.log('results', results);
       results.document.error = error;
     }
     // results.counts.projectCount++;
@@ -406,26 +338,26 @@ async function scrape(counts) {
 async function confirmFileDownloaded(fileName) {
   return new Promise((resolve, reject) => {
     const startTime = Date.now();
-    // console.log("Startime: ", startTime);
+    console.log("Startime: ", startTime);
     const fileCheckerInterval = setInterval(() => {
-      fs.stat(
-        `${`/Users/${process.env.whoami}/Downloads/${fileName}.jno`}`,
-        function (err, stats) {
-          if (stats) {
+      fs.stat(`${`/Users/${process.env.whoami}/Downloads/${fileName}.jno`}`, function(  // fs.stat(`${`/Users/Dan/Downloads/${fileName}.jno`}`
+        err,
+        stats
+      ) {
+        if (stats) {
+          clearInterval(fileCheckerInterval);
+          console.log("the .jno file has been downloaded");
+          resolve("success");
+        } else if (err) {
+          currentTime = Date.now();
+          // console.log({ currentTime: Date.now() });
+          if (currentTime - startTime > 10000) {
             clearInterval(fileCheckerInterval);
-            console.log("the .jno file has been downloaded");
-            resolve("success");
-          } else if (err) {
-            currentTime = Date.now();
-            // console.log({ currentTime: Date.now() });
-            if (currentTime - startTime > 11000) {
-              clearInterval(fileCheckerInterval);
-              resolve();
-            }
-            return;
+            resolve();
           }
+          return;
         }
-      );
+      });
     }, 1000);
   });
 }
@@ -433,30 +365,26 @@ async function confirmFileDownloaded(fileName) {
 async function confirmCSVDownloaded(fileName) {
   return new Promise((resolve, reject) => {
     const startTime = Date.now();
-    // console.log("Startime: ", startTime);
+    console.log("Startime: ", startTime);
     const fileCheckerInterval = setInterval(() => {
-      fs.stat(
-        `${`/Users/${process.env.whoami}/Downloads/${fileName}_multicolumn.csv`}`,
-        function (
-          // fs.stat(`${`/Users/Dan/Downloads/${fileName}.jno`}`
-          err,
-          stats
-        ) {
-          if (stats) {
+      fs.stat(`${`/Users/${process.env.whoami}/Downloads/${fileName}.csv`}`, function(  // fs.stat(`${`/Users/Dan/Downloads/${fileName}.jno`}`
+        err,
+        stats
+      ) {
+        if (stats) {
+          clearInterval(fileCheckerInterval);
+          console.log("the .csv file has been downloaded");
+          resolve("success");
+        } else if (err) {
+          currentTime = Date.now();
+          // console.log({ currentTime: Date.now() });
+          if (currentTime - startTime > 10000) {
             clearInterval(fileCheckerInterval);
-            console.log("the .csv file has been downloaded");
-            resolve("success");
-          } else if (err) {
-            currentTime = Date.now();
-            // console.log({ currentTime: Date.now() });
-            if (currentTime - startTime > 7000) {
-              clearInterval(fileCheckerInterval);
-              resolve();
-            }
-            return;
+            resolve();
           }
+          return;
         }
-      );
+      });
     }, 1000);
   });
 }
@@ -464,34 +392,35 @@ async function confirmCSVDownloaded(fileName) {
 async function recursiveScrape(counts) {
   try {
     const scrapeData = await scrape(counts);
-    console.log("scrape data: ", { scrapeData });
+    console.log('scrape data: ', {scrapeData})
     if (scrapeData.document !== null) {
       const {
         projectName,
         subjectName,
         topicName,
-        roomName,
+        roomName
       } = scrapeData.document;
       const srcPath = `/Users/${process.env.whoami}/Downloads/${roomName}.jno`;
-      const CSVsrcPatch = `/Users/${process.env.whoami}/Downloads/${roomName}_multicolumn.csv`;
+      // const CSBsrcPatch = `/Users/${process.env.whoami}/Downloads/${roomName}.csv`;
       const targetPath = `/Users/${process.env.whoami}/Documents/Data/21pstem/jno-scraper/ALLFiles/${projectName}/${subjectName}/${topicName}`;
       await buildPaths(targetPath);
       const { success, err } = await saveFile(
         srcPath,
         targetPath + `/${roomName}.jno`
       );
-      const { CSVsuccess, CSVerr } = await saveFile(
-        CSVsrcPatch,
-        targetPath + `/${roomName}.csv`
-      );
-      if (err || CSVerr) {
-        scrapeData.document.error = err + CSVerr;
+      // const { CSVsuccess, CSVerr } = await saveFile(
+      //   CSBsrcPatch,
+      //   targetPath + `/${roomName}.csv`
+      // );
+      if (err) {
+        scrapeData.document.error = err;
       }
       await saveToDb(scrapeData.document);
       console.log(chalk.blue("saved to db"));
+
     }
     if (scrapeData.counts.projectCount > projectCountTarget) {
-      console.log(chalk.green.bold("Scrape complete!"));
+      console.log(chalk.green("Scrape complete!"));
       mongoose.connection.close();
       process.exit;
     } else {
@@ -537,7 +466,7 @@ function buildPaths(path) {
 function checkDirectoryRecursive(dirs) {
   return new Promise((resolve, reject) => {
     dir = dirs.shift();
-    fs.stat(dir, function (err, stats) {
+    fs.stat(dir, function(err, stats) {
       if (stats) {
         if (dirs.length > 0) {
           resolve(checkDirectoryRecursive(dirs));
@@ -546,12 +475,9 @@ function checkDirectoryRecursive(dirs) {
         }
       }
       //Check if error defined and the error code is "not exists"
-      if (
-        err &&
-        (err.errno === -2 || err.errno === 34 || err.errno === -4058)
-      ) {
+      if (err && (err.errno === -2 || err.errno === 34 || err.errno === -4058)) {
         //Create the directory, call the callback.
-        fs.mkdir(dir, (err) => {
+        fs.mkdir(dir, err => {
           if (err) {
             reject(err);
           } else if (dirs.length > 0) {
@@ -569,30 +495,29 @@ function checkDirectoryRecursive(dirs) {
 
 function saveFile(src, trg) {
   return new Promise((resolve, reject) => {
-    fs.rename(src, trg, (err) => {
+    fs.rename(src, trg, err => {
       if (err) {
-        console.log(chalk.red.bold("err renaming: "), err);
-        resolve({ success: null, err: "could not download" + src });
+        console.log(chalk.red("err renaming: ", err));
+        resolve({ success: null, err: "could not download" });
       } else {
-        console.log(chalk.green.bold("file saved: "), trg);
+        console.log(chalk.green("file saved: ", trg));
         resolve({ success: "success", err: null });
       }
     });
-    // reject(new Error("Save file process error!"))
   });
 }
 
 function updateCounts({ roomCount, topicCount, subjectCount, projectCount }) {
   console.log({
-    counts: { roomCount, topicCount, subjectCount, projectCount },
+    counts: { roomCount, topicCount, subjectCount, projectCount }
   });
   console.log({
     targets: {
       currentRoomCountTarget,
       currentSubjectCountTarget,
       currentTopicCountTarget,
-      projectCountTarget,
-    },
+      projectCountTarget
+    }
   });
   roomCount += 1;
   if (roomCount >= currentRoomCountTarget) {
@@ -617,8 +542,8 @@ function updateCounts({ roomCount, topicCount, subjectCount, projectCount }) {
       roomCount,
       topicCount,
       subjectCount,
-      projectCount,
-    },
+      projectCount
+    }
   });
   return { roomCount, topicCount, subjectCount, projectCount };
 }
@@ -634,12 +559,8 @@ mongoose.connect(mongoURI, { useNewUrlParser: true }, (err, res) => {
     let topicCount = 0;
     let roomCount = 0;
     const counts = { projectCount, subjectCount, topicCount, roomCount };
-    console.log("Counts:", counts);
-    console.log(
-      chalk.yellow("~~~~~~~~~~ "),
-      chalk.green.bold("Starting scrape"),
-      chalk.yellow(" ~~~~~~~~~~")
-    );
+    console.log('Counts:', counts );
+    console.log(chalk.yellow("~~~~~~~~~~ "), chalk.green("Starting scrape"), chalk.yellow(" ~~~~~~~~~~"));
     recursiveScrape(counts);
   }
 });
