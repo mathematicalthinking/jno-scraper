@@ -9,7 +9,7 @@ const path = require("path");
 // const css = require('./selectors');
 
 // testing timeout values
-const timeoutMs = 5000; // timeout per await
+const timeoutMs = 4000; // timeout per await
 const timeoutTestMsStr = "20s"; // timeout per test
 
 const baseURL = "http://oldvmt.mathematicalthinking.org";
@@ -20,7 +20,7 @@ const baseURL = "http://oldvmt.mathematicalthinking.org";
 
 // const loginUrl = `${host}/#/auth/login`;
 
-const getCurrentUrl = async function(webdriver) {
+const getCurrentUrl = async function (webdriver) {
   let url;
   try {
     url = await webdriver.getCurrentUrl();
@@ -30,7 +30,7 @@ const getCurrentUrl = async function(webdriver) {
   return url;
 };
 
-const isElementVisible = async function(webDriver, selector) {
+const isElementVisible = async function (webDriver, selector) {
   let isVisible = false;
   try {
     const webElements = await webDriver.findElements(By.css(selector));
@@ -47,7 +47,7 @@ const isElementVisible = async function(webDriver, selector) {
   return isVisible;
 };
 
-const getWebElements = async function(webDriver, selector) {
+const getWebElements = async function (webDriver, selector) {
   let webElements = [];
   try {
     webElements = await webDriver.findElements(By.css(selector));
@@ -57,7 +57,7 @@ const getWebElements = async function(webDriver, selector) {
   return webElements;
 };
 
-const getXPathElements = async function(webDriver, path) {
+const getXPathElements = async function (webDriver, path) {
   let webElements = [];
   try {
     webElements = await webDriver.findElements(By.xpath(path));
@@ -67,7 +67,7 @@ const getXPathElements = async function(webDriver, path) {
   return webElements;
 };
 
-const getWebElementValue = async function(webDriver, selector) {
+const getWebElementValue = async function (webDriver, selector) {
   let webElement, webValue;
   try {
     webElement = await webDriver.findElement(By.css(selector));
@@ -78,7 +78,7 @@ const getWebElementValue = async function(webDriver, selector) {
   return webValue;
 };
 
-const getWebElementTooltip = async function(webDriver, selector) {
+const getWebElementTooltip = async function (webDriver, selector) {
   let webElement, webValue;
   try {
     webElement = await webDriver.findElement(By.css(selector));
@@ -89,7 +89,7 @@ const getWebElementTooltip = async function(webDriver, selector) {
   return webValue;
 };
 
-const navigateAndWait = async function(
+const navigateAndWait = async function (
   webDriver,
   url,
   selector,
@@ -99,7 +99,7 @@ const navigateAndWait = async function(
   return webDriver.wait(until.elementLocated(By.css(selector)), timeout);
 };
 
-const findAndGetText = async function(
+const findAndGetText = async function (
   webDriver,
   selector,
   caseInsenstive = false
@@ -119,18 +119,18 @@ const findAndGetText = async function(
   return text;
 };
 
-const isTextInDom = function(webDriver, text) {
+const isTextInDom = function (webDriver, text) {
   return webDriver
     .getPageSource()
-    .then(source => {
+    .then((source) => {
       return typeof source === "string" && source.includes(text);
     })
-    .catch(err => {
+    .catch((err) => {
       throw err;
     });
 };
 
-const hasTooltipValue = async function(webDriver, selector, value) {
+const hasTooltipValue = async function (webDriver, selector, value) {
   let hasValue;
   try {
     let dataValue = await getWebElementTooltip(webDriver, selector);
@@ -141,7 +141,7 @@ const hasTooltipValue = async function(webDriver, selector, value) {
   return hasValue;
 };
 
-const findAndClickElement = async function(webDriver, selector) {
+const findAndClickElement = async function (webDriver, selector) {
   let elements = await getWebElements(webDriver, selector);
   if (elements.length > 0) {
     return elements[0].click();
@@ -150,10 +150,10 @@ const findAndClickElement = async function(webDriver, selector) {
 };
 
 // New helper function to fix URL domain issue
-const findAndDLElement = async function(webDriver, selector) {
+const findAndDLElement = async function (webDriver, selector) {
   console.log("DL Element selector: ", selector);
   let elements = await getWebElementByCss(webDriver, selector);
-  console.log('Found elements :', elements);
+  console.log("Found elements :", elements);
   if (elements.length > 0) {
     let oldURL = await elements[0].getAttribute("onclick");
     oldURL = String(oldURL);
@@ -162,27 +162,51 @@ const findAndDLElement = async function(webDriver, selector) {
     oldURL = oldURL.substr(22);
     oldURL = oldURL.substring(0, oldURL.length - 1);
     let newURL = oldURL.replace("http://192.168.1.110:8080", baseURL);
+    newURL = encodeURI(newURL);
     console.log("Old url parsed: ", oldURL, "; Corrected URL: ", newURL);
-    return webDriver.get(newURL)
+    return webDriver.get(newURL);
   }
   return;
-}
+};
 
 // New helper function to fix URL domain issue, uses direct URL approach
-const findAndDLbyURL = async function(webDriver, roomName, CID) {
-    let newURL = baseURL + '/vmtChat/nativeExport.jsp?channelID=' + CID + '&filename=' + roomName;
-    console.log("Corrected URL for JNO DL: ", newURL);
-    return webDriver.get(newURL)
-}
+const findAndDLbyURL = async function (webDriver, roomName, CID) {
+  let newURL =
+    baseURL +
+    "/vmtChat/nativeExport.jsp?channelID=" +
+    CID +
+    "&filename=" +
+    roomName;
+  newURL = encodeURI(newURL);
+  // console.log("Corrected URL for JNO DL: ", newURL);
+  try {
+    webDriver.get(newURL);
+  } catch (err) {
+    console.log(err.message);
+  }
+  return newURL;
+};
 
- // location.href="http://192.168.1.110:8080/vmtChat/logExport?channelID=CID:1430311635466&roomName=vmt math&reportType=1"
-const findCSVAndDLbyURL = async function(webDriver, roomName, CID) {
-  let newURL = baseURL + '/vmtChat/logExport?channelID=' + CID + '&roomName=' + roomName + '&reportType=1';
-  console.log("Corrected URL for CSV DL: ", newURL);
-  return webDriver.get(newURL)
-}
+// location.href="http://192.168.1.110:8080/vmtChat/logExport?channelID=CID:1430311635466&roomName=vmt math&reportType=1"
+const findCSVAndDLbyURL = async function (webDriver, roomName, CID) {
+  let newURL =
+    baseURL +
+    "/vmtChat/logExport?channelID=" +
+    CID +
+    "&roomName=" +
+    roomName +
+    "&reportType=1";
+  newURL = encodeURI(newURL);
+  // console.log("Corrected URL for CSV DL: ", newURL);
+  try {
+    webDriver.get(newURL);
+  } catch (err) {
+    console.log(err.message);
+  }
+  return newURL;
+};
 
-const waitForAndClickElement = function(
+const waitForAndClickElement = function (
   webDriver,
   selector,
   timeout = timeoutMs
@@ -193,51 +217,51 @@ const waitForAndClickElement = function(
       timeout,
       `Unable to locate element by selector: ${selector}`
     )
-    .then(locatedEl => {
+    .then((locatedEl) => {
       return webDriver
         .wait(
           until.elementIsVisible(locatedEl),
           timeout,
           `Element ${selector} not visible`
         )
-        .then(visibleEl => {
+        .then((visibleEl) => {
           return visibleEl.click();
         });
     })
-    .catch(err => {
+    .catch((err) => {
       throw err;
     });
 };
 
-const waitForTextInDom = function(webDriver, text, timeout = timeoutMs) {
+const waitForTextInDom = function (webDriver, text, timeout = timeoutMs) {
   return webDriver
     .wait(
-      function() {
+      function () {
         return isTextInDom(webDriver, text);
       },
       timeout,
       `Could not find ${text} in DOM`
     )
-    .catch(err => {
+    .catch((err) => {
       throw err;
     });
 };
 
-const waitForSelector = function(webDriver, selector, timeout = timeoutMs) {
+const waitForSelector = function (webDriver, selector, timeout = timeoutMs) {
   return webDriver
     .wait(until.elementLocated(By.css(selector)), timeout)
-    .catch(err => {
+    .catch((err) => {
       throw err;
     });
 };
 
-const waitForRemoval = async function(
+const waitForRemoval = async function (
   webDriver,
   selector,
   timeout = timeoutMs
 ) {
   try {
-    return await webDriver.wait(async function() {
+    return await webDriver.wait(async function () {
       return (await isElementVisible(webDriver, selector)) === false;
     }, timeout);
   } catch (err) {
@@ -249,7 +273,7 @@ const waitForRemoval = async function(
   }
 };
 
-const findInputAndType = async function(
+const findInputAndType = async function (
   webDriver,
   selector,
   text,
@@ -269,24 +293,24 @@ const findInputAndType = async function(
   return;
 };
 
-const checkSelectorsExist = function(webDriver, selectors) {
+const checkSelectorsExist = function (webDriver, selectors) {
   return Promise.all(
-    selectors.map(selector => {
+    selectors.map((selector) => {
       return isElementVisible(webDriver, selector);
     })
-  ).then(selectors => {
-    return selectors.every(x => x === true);
+  ).then((selectors) => {
+    return selectors.every((x) => x === true);
   });
 };
 
-const createSelectors = function(filterOptions) {
-  let options = filterOptions.map(item => {
+const createSelectors = function (filterOptions) {
+  let options = filterOptions.map((item) => {
     return Object.values(item);
   });
   return [].concat.apply([], options);
 };
 
-const createFilterList = function(
+const createFilterList = function (
   isStudent,
   isAdmin,
   filterList,
@@ -295,14 +319,14 @@ const createFilterList = function(
   let filterOptions = [...filterList];
 
   if (removeChildren) {
-    filterOptions.forEach(item => {
+    filterOptions.forEach((item) => {
       if (item.hasOwnProperty("children")) {
         delete item.children;
       }
     });
   }
   if (isAdmin) {
-    filterOptions.forEach(item => {
+    filterOptions.forEach((item) => {
       if (item.hasOwnProperty("adminOnly")) {
         delete item.adminOnly;
       }
@@ -324,7 +348,7 @@ const createFilterList = function(
   return filterOptions;
 };
 
-const selectOption = async function(webDriver, selector, item, isByCss) {
+const selectOption = async function (webDriver, selector, item, isByCss) {
   try {
     let selectList;
     if (isByCss) {
@@ -337,12 +361,12 @@ const selectOption = async function(webDriver, selector, item, isByCss) {
     await el.click();
     return el;
   } catch (err) {
-    console.log(err.message);
+    console.log("Select Option error! - ", err.message);
     throw err;
   }
 };
 
-const login = async function(webDriver, host, user = admin) {
+const login = async function (webDriver, host, user = admin) {
   await navigateAndWait(webDriver, host, css.topBar.login);
   await findAndClickElement(webDriver, css.topBar.login);
 
@@ -353,7 +377,7 @@ const login = async function(webDriver, host, user = admin) {
   return waitForSelector(webDriver, css.topBar.logout);
 };
 
-const signup = async function(
+const signup = async function (
   webDriver,
   missingFields = [],
   user = newUser,
@@ -387,7 +411,7 @@ const signup = async function(
   }
 };
 
-const clearElement = async function(webDriver, element) {
+const clearElement = async function (webDriver, element) {
   let ele;
   try {
     let elements = await getWebElements(webDriver, element);
@@ -397,7 +421,7 @@ const clearElement = async function(webDriver, element) {
     console.log(err.message);
   }
 };
-const waitForUrlMatch = async function(webDriver, regex, timeout = timeoutMs) {
+const waitForUrlMatch = async function (webDriver, regex, timeout = timeoutMs) {
   try {
     await webDriver.wait(until.urlMatches(regex), timeout);
     return true;
@@ -408,34 +432,34 @@ const waitForUrlMatch = async function(webDriver, regex, timeout = timeoutMs) {
   }
 };
 
-const saveScreenshot = function(webdriver) {
-  return webdriver.takeScreenshot().then(base64Data => {
+const saveScreenshot = function (webdriver) {
+  return webdriver.takeScreenshot().then((base64Data) => {
     let buffer = Buffer.from(base64Data, "base64");
     return sharp(buffer)
       .toFile(path.join(__dirname, "screenshots", `${Date.now()}.png`))
-      .catch(err => {
+      .catch((err) => {
         console.log(`Error saving screenshot: ${err}`);
       });
   });
 };
 
-const waitForNElements = function(
+const waitForNElements = function (
   webDriver,
   selector,
   num,
   timeout = timeoutMs
 ) {
   let conditionFn = () => {
-    return getWebElements(webDriver, selector).then(els => {
+    return getWebElements(webDriver, selector).then((els) => {
       return els.length === num;
     });
   };
-  return webDriver.wait(conditionFn, timeout).catch(err => {
+  return webDriver.wait(conditionFn, timeout).catch((err) => {
     throw err;
   });
 };
 
-const dismissErrorBox = function(webDriver) {
+const dismissErrorBox = function (webDriver) {
   let xBtn = css.general.errorBoxDismiss;
 
   return findAndClickElement(webDriver, xBtn).then(() => {
@@ -443,11 +467,11 @@ const dismissErrorBox = function(webDriver) {
   });
 };
 
-const waitForAndGetErrorBoxText = function(webDriver) {
+const waitForAndGetErrorBoxText = function (webDriver) {
   return findAndGetText(webDriver, css.general.errorBoxText);
 };
 
-const selectSingleSelectizeItem = function(
+const selectSingleSelectizeItem = function (
   webDriver,
   inputSelector,
   text,
@@ -457,11 +481,11 @@ const selectSingleSelectizeItem = function(
   let { willInputClearOnSelect, toastText } = options;
 
   return getWebElementByCss(webDriver, inputSelector)
-    .then(selectizeInput => {
+    .then((selectizeInput) => {
       return selectizeInput.sendKeys(text).then(() => {
         let dataValSelector = `div[data-value="${itemValue}"]`;
         return waitForAndClickElement(webDriver, dataValSelector).then(() => {
-          return getParentElement(selectizeInput).then(parentNode => {
+          return getParentElement(selectizeInput).then((parentNode) => {
             if (!willInputClearOnSelect) {
               return waitForElementToHaveText(webDriver, parentNode, text);
             }
@@ -473,19 +497,19 @@ const selectSingleSelectizeItem = function(
         });
       });
     })
-    .catch(err => {
+    .catch((err) => {
       throw err;
     });
 };
 
-const getWebElementByCss = function(webDriver, selector) {
+const getWebElementByCss = function (webDriver, selector) {
   // not for testing existence or visibility
-  return webDriver.findElement(By.css(selector)).catch(err => {
+  return webDriver.findElement(By.css(selector)).catch((err) => {
     throw err;
   });
 };
 
-const waitForElementToHaveText = function(
+const waitForElementToHaveText = function (
   webDriver,
   webElOrSelector,
   expectedText,
@@ -496,30 +520,30 @@ const waitForElementToHaveText = function(
 
   if (isSelector) {
     conditionFn = () => {
-      return findAndGetText(webDriver, webElOrSelector).then(text => {
+      return findAndGetText(webDriver, webElOrSelector).then((text) => {
         return text === expectedText;
       });
     };
   } else {
     conditionFn = () => {
-      return webElOrSelector.getText().then(val => {
+      return webElOrSelector.getText().then((val) => {
         return val === expectedText;
       });
     };
   }
 
-  return webDriver.wait(conditionFn, timeout || timeoutMs).catch(err => {
+  return webDriver.wait(conditionFn, timeout || timeoutMs).catch((err) => {
     throw err;
   });
 };
 
-const getParentElement = function(webElement) {
-  return webElement.findElement(By.xpath("./..")).catch(err => {
+const getParentElement = function (webElement) {
+  return webElement.findElement(By.xpath("./..")).catch((err) => {
     throw err;
   });
 };
 
-const waitForAttributeToEql = function(
+const waitForAttributeToEql = function (
   webDriver,
   webElement,
   attributeName,
@@ -527,36 +551,36 @@ const waitForAttributeToEql = function(
   timeout = timeoutMs
 ) {
   let conditionFn = () => {
-    return webElement.getAttribute(attributeName).then(attributeVal => {
+    return webElement.getAttribute(attributeName).then((attributeVal) => {
       return attributeVal === expectedValue;
     });
   };
-  return webDriver.wait(conditionFn, timeout).catch(err => {
+  return webDriver.wait(conditionFn, timeout).catch((err) => {
     throw err;
   });
 };
 
-const logout = function(webDriver) {
+const logout = function (webDriver) {
   let loginRegex = new RegExp("/#/auth/login");
   return findAndClickElement(webDriver, css.topBar.logout)
     .then(() => {
       return waitForUrlMatch(webDriver, loginRegex);
     })
-    .catch(err => {
+    .catch((err) => {
       throw err;
     });
 };
 
-const dismissWorkspaceTour = function(webDriver) {
+const dismissWorkspaceTour = function (webDriver) {
   let xBtnSel = css.workspace.tour.xBtn;
   let overlaySel = css.workspace.tour.overlay;
   return waitForSelector(webDriver, xBtnSel, 1000)
-    .then(xBtn => {
+    .then((xBtn) => {
       return xBtn.click().then(() => {
         return waitForRemoval(webDriver, overlaySel);
       });
     })
-    .catch(err => {
+    .catch((err) => {
       if (err.name === "TimeoutError") {
         // tour box didnt pop up
         return true;
@@ -565,7 +589,7 @@ const dismissWorkspaceTour = function(webDriver) {
     });
 };
 
-const waitForElementsChild = async function(
+const waitForElementsChild = async function (
   webDriver,
   element,
   xpath,
@@ -575,7 +599,7 @@ const waitForElementsChild = async function(
   let conditionFn = () => {
     return element
       .findElements({ xpath })
-      .then(els => {
+      .then((els) => {
         if (els.length === 0) {
           // console.log("could not find child: ", xpath);
           return false;
@@ -584,17 +608,16 @@ const waitForElementsChild = async function(
         // console.log("here we are: ", el);
         return el.isDisplayed() ? el : false;
       })
-      .catch(err => {
+      .catch((err) => {
         console.log(err.message);
       });
   };
 
-  return webDriver.wait(conditionFn, timeout)
-  .catch(err => {
+  return webDriver.wait(conditionFn, timeout).catch((err) => {
     console.log(err.message);
   });
 };
-const selectOptionByIndex = async function(
+const selectOptionByIndex = async function (
   webDriver,
   selector,
   index,
