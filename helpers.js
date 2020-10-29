@@ -356,7 +356,9 @@ const selectOption = async function (webDriver, selector, item, isByCss) {
     } else {
       selectList = await webDriver.findElement(By.id(selector));
     }
+    await webDriver.sleep(150)
     await selectList.click();
+    await webDriver.sleep(350)
     let el = await selectList.findElement(By.css(`option[value="${item}"]`));
     await el.click();
     return el;
