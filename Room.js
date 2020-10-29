@@ -6,6 +6,8 @@ const room = mongoose.Schema({
   topicName: { type: String }, // red text
   roomName: { type: String }, // maroon text
   path: { type: String },
+  csvLink: { type: String },
+  jnoLink: { type: String },
   error: { type: String, default: null }
 });
 
