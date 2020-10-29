@@ -9,8 +9,10 @@ const path = require("path");
 // const css = require('./selectors');
 
 // testing timeout values
-const timeoutMs = 4000; // timeout per await
-const timeoutTestMsStr = "20s"; // timeout per test
+const slowFactor = 1.3;
+const timeoutMs = 4000 * (slowFactor); // timeout per await
+let TOstr = ( slowFactor * 20 ) + 's'
+const timeoutTestMsStr = TOstr; // timeout per test
 
 const baseURL = "http://oldvmt.mathematicalthinking.org";
 
@@ -356,7 +358,9 @@ const selectOption = async function (webDriver, selector, item, isByCss) {
     } else {
       selectList = await webDriver.findElement(By.id(selector));
     }
+    await webDriver.sleep(150*slowFactor)
     await selectList.click();
+    await webDriver.sleep(350*slowFactor)
     let el = await selectList.findElement(By.css(`option[value="${item}"]`));
     await el.click();
     return el;
@@ -708,3 +712,4 @@ module.exports.findAndDLElement = findAndDLElement;
 module.exports.findAndDLbyURL = findAndDLbyURL;
 module.exports.findCSVAndDLbyURL = findCSVAndDLbyURL;
 module.exports.baseURL = baseURL;
+module.exports.slowFactor = slowFactor;

@@ -10,13 +10,16 @@ const Room = require("./Room");
 
 const { Builder, By } = require("selenium-webdriver");
 const helpers = require("./helpers");
-
+const slowFactor = helpers.slowFactor;
+const dlFactor = 10;
 let projectCountTarget;
 let currentSubjectCountTarget;
 let currentTopicCountTarget;
 let currentRoomCountTarget;
 
 require("dotenv").config();
+const startTime = Date.now();
+let runTime;
 async function scrape(counts) {
   const { projectCount, subjectCount, topicCount, roomCount } = counts;
   let driver = null;
@@ -49,7 +52,7 @@ async function scrape(counts) {
 
     // PARSE PROJECT INFO
     if (!projectCountTarget) {
-      await driver.sleep(1000);
+      await driver.sleep(1500*slowFactor);
       projectList = await driver.findElements(
         By.css("#communityList1 > option")
       );
@@ -70,8 +73,8 @@ async function scrape(counts) {
       return results;
     }
     let project;
-    driver.sleep(1250); // reguarly needing retry- adding initial pause to increase intial success
     try {
+      await driver.sleep(1750*slowFactor); // reguarly needing retry- adding initial pause to increase intial success
       project = await helpers.selectOption(
         driver,
         communityListSel,
@@ -79,25 +82,56 @@ async function scrape(counts) {
         true
       );
     } catch (err) {
-      console.log(chalk.red("couldnt select options 😢"));
-      console.log("trying again");
-      driver.sleep(4000);
-      project = await helpers.selectOption(
-        driver,
-        communityListSel,
-        projectCount,
-        true
-      );
+      try {
+        console.log(chalk.red("couldnt select options 😢"));
+        console.log("trying again");
+        await driver.sleep(6000*slowFactor);
+        project = await helpers.selectOption(
+          driver,
+          communityListSel,
+          projectCount,
+          true
+        );
+      } catch (err) {
+        try {
+          console.log(chalk.red("really couldnt select options 😢 😢 😢"));
+          console.log("trying one last time...");
+          await driver.sleep(12000*slowFactor);
+          project = await helpers.selectOption(
+            driver,
+            communityListSel,
+            projectCount,
+            true
+          );
+        } catch (err) {
+          // ESCAPE CLAUSE
+          // projectName = "ERR:No Project Located!";
+          console.log(chalk.red.bold("ESCAPE COND- COULD NOT GET PROJ TITLE!"));
+          let results = {
+            document: null,
+            counts: {
+              roomCount,
+              topicCount,
+              subjectCount,
+              projectCount,
+            },
+          };
+          return results;
+        }
+      }
     }
     // PRINT Status: Project
-    // if (project) console.log(chalk.cyan('Project found!...'));
+    if (project) console.log(chalk.cyan("Project found!..."));
+
     let projectName = await project.getAttribute("innerText");
-    await project.click();
-    await helpers.findAndClickElement(driver, "input[name='refreshButton']");
-    await driver.sleep(1000);
-    await helpers.waitForSelector(driver, "#subjectsList");
     // PRINT Status: Project Name
     if (projectName) console.log(chalk.cyan("Project name: ", projectName));
+
+    await project.click();
+    await helpers.findAndClickElement(driver, "input[name='refreshButton']");
+    await driver.sleep(1250*slowFactor);
+    await helpers.waitForSelector(driver, "#subjectsList");
+
     // PARSE SUBJECT INFO
     let subjectListItems = await helpers.getWebElements(
       driver,
@@ -150,7 +184,7 @@ async function scrape(counts) {
     if (topicList) console.log(chalk.cyan("Topic List found!"));
     // TOPIC INFO
     // let topicList = await subject.findElement({ xpath: "./ul[1]" });
-    await driver.sleep(200);
+    await driver.sleep(200*slowFactor);
     let topicListEls = await topicList.findElements({ xpath: "./li" });
     if (!currentTopicCountTarget) {
       // topicListEls = await topicList.findElements({ xpath: "./li" });
@@ -178,32 +212,57 @@ async function scrape(counts) {
     // let topicListEl = await topicList.findElement({
     //   xpath: `./li[${topicCount + 1}]`
     // });
-    await driver.sleep(250);
-    let topicListEl = await helpers.waitForElementsChild(
-      driver,
-      topicList,
-      `./li[${topicCount + 1}]`
-    );
+    await driver.sleep(250*slowFactor);
+    let topicListEl;
+    try {
+      topicListEl = await helpers.waitForElementsChild(
+        driver,
+        topicList,
+        `./li[${topicCount + 1}]`
+      );
+    } catch (err) {
+      if (!topicListEl) {
+        console.log(
+          `Topic list had ${
+            topicListEls.length
+          } topics but could not find topic ${topicCount + 1} `
+        );
+      }
+      console.log("Err: Trying to find topic again...", err);
+      await driver.sleep(1500*slowFactor);
+      topicListEl = await helpers.waitForElementsChild(
+        driver,
+        topicList,
+        `./li[${topicCount + 1}]`
+      );
+    }
 
     // PRINT Status: Topic Elementt
     if (topicListEl) console.log(chalk.cyan("Topic element found!"));
 
-    if (!topicListEl) {
-      console.log(
-        `Topic list had ${
-          topicListEls.length
-        } topics but could not find topic ${topicCount + 1} `
+    // let roomExpandBtn = await topicListEl.findElement({ xpath: "./img[1]" });
+    let roomExpandBtn;
+    try {
+      roomExpandBtn = await helpers.waitForElementsChild(
+        driver,
+        topicListEl,
+        "./img[1]"
+      );
+    } catch (err) {
+      console.log("Err: Trying to find room expnd again...", err);
+      await driver.sleep(1500*slowFactor);
+      roomExpandBtn = await helpers.waitForElementsChild(
+        driver,
+        topicListEl,
+        "./img[1]"
       );
     }
 
-    // let roomExpandBtn = await topicListEl.findElement({ xpath: "./img[1]" });
-    let roomExpandBtn = await helpers.waitForElementsChild(
-      driver,
-      topicListEl,
-      "./img[1]"
-    );
     // PRINT Status: Topic Name
     if (roomExpandBtn) console.log(chalk.cyan("Room expand button located!"));
+    // ROOM INFO
+    await roomExpandBtn.click();
+    await driver.sleep(750*slowFactor);
 
     // let topicLink = await topicListEl.findElement({ xpath: "./span/a" });
     let topicLink = await helpers.waitForElementsChild(
@@ -216,25 +275,17 @@ async function scrape(counts) {
     // PRINT Status: Topic Name
     if (topicName) console.log(chalk.cyan("Topic found:", topicName));
 
-    // ROOM INFO
-    await roomExpandBtn.click();
-
     let roomList = await helpers.waitForElementsChild(
       driver,
       topicListEl,
       "./ul[1]"
     );
+    // PRINT Status: Room list
+    if (roomList) console.log(chalk.cyan("Room list found!"));
+
     // let roomList = await topicListEl.findElement({ xpath: "./ul[1]" });
     // console.log(`Found room list for topic ${topicName}`);
-    await driver.sleep(250);
     let roomListEls = await roomList.findElements({ xpath: "./li" });
-
-    // PRINT Status: Topic rooms
-    console.log(
-      chalk.cyan(
-        `...Room List for ${topicName} has ${roomListEls.length} rooms`
-      )
-    );
 
     if (!currentRoomCountTarget) {
       currentRoomCountTarget = roomListEls.length;
@@ -242,7 +293,80 @@ async function scrape(counts) {
 
     if (roomListEls.length === 0) {
       // no rooms afte expanding topic
-      console.log("no rooms after expanding topic: ", topicName);
+      try {
+        await driver.sleep(1750*slowFactor);
+        roomListEls = await roomList.findElements({ xpath: "./li" });
+      } catch (err) {
+        console.log(chalk.red(err), chalk.cyan("no rooms after expanding topic: ", topicName));
+        let results = {
+          document: null,
+          counts: {
+            roomCount,
+            topicCount,
+            subjectCount,
+            projectCount,
+          },
+        };
+        return results;
+      }
+    }
+    // PRINT Status: Topic rooms
+    console.log(
+      chalk.cyan(
+        `...Room List for ${topicName} has ${roomListEls.length} rooms`
+      )
+    );
+
+    await driver.sleep(250*slowFactor);
+    // let room = await roomList.findElement({ xpath: `./li[${roomCount + 1}]` });
+    let room = await helpers.waitForElementsChild(
+      driver,
+      roomList,
+      `./li[${roomCount + 1}]`
+    );
+    try {
+      roomName = await room.getAttribute("innerText");
+    } catch (err) {
+      try {
+        console.log(chalk.red("Room error :", err));
+        console.log(chalk.gray(`Trying to find the room again...`));
+        await driver.sleep(2000*slowFactor);
+        if (!room) {
+          console.log(
+            chalk.cyan.bold(`Room list had elements but no room found`)
+          );
+          room = await helpers.waitForElementsChild(
+            driver,
+            roomList,
+            `./li[${roomCount + 1}]`
+          );
+        }
+        roomName = await room.getAttribute("innerText");
+      } catch (err) {
+        console.log(chalk.red.bold("Room error repeat:", err));
+        console.log(chalk.gray(`Trying to find the room one last time...`));
+        await driver.sleep(5000*slowFactor);
+        if (!room) {
+          console.log(
+            chalk.cyan.bold(`Room list had elements but no room found`)
+          );
+          room = await helpers.waitForElementsChild(
+            driver,
+            roomList,
+            `./li[${roomCount + 1}]`
+          );
+        }
+        await driver.sleep(1500*slowFactor);
+        roomName = await room.getAttribute("innerText");
+      }
+    }
+
+    // PRINT Status: Room Name
+    if (roomName) console.log(chalk.cyan("Room found:", roomName));
+    // ESCAPE CLAUSE
+    if (!roomName) {
+      projectName = "ERR:No Room Name Found!";
+      console.log(chalk.red.bold("ESCAPE COND- COULD NOT GET ROOM NAME!"));
       let results = {
         document: null,
         counts: {
@@ -254,43 +378,15 @@ async function scrape(counts) {
       };
       return results;
     }
-
-    await driver.sleep(250);
-    // let room = await roomList.findElement({ xpath: `./li[${roomCount + 1}]` });
-    let room = await helpers.waitForElementsChild(
-      driver,
-      roomList,
-      `./li[${roomCount + 1}]`
-    );
-    try {
-      roomName = await room.getAttribute("innerText");
-    } catch (err){
-      console.log(chalk.red('Room error :', err))
-      console.log(chalk.gray(`Trying to find the room again...`));
-      await driver.sleep(2000);
-      if (!room) {
-        console.log(chalk.cyan.bold(`Room list had elements but no room found`));
-        room = await helpers.waitForElementsChild(
-          driver,
-          roomList,
-          `./li[${roomCount + 1}]`
-        );
-      }
-      roomName = await room.getAttribute("innerText");
-    }
-  
-    // PRINT Status: Room Name
-    if (roomName) console.log(chalk.cyan("Room found:", roomName));
-
     await driver.sleep(250);
     let roomLink = await helpers.waitForElementsChild(driver, room, `./img`);
     let CID;
     try {
       CID = await roomLink.getAttribute("id");
-    } catch (err){
-      console.log(chalk.red('CID error :', err))
+    } catch (err) {
+      console.log(chalk.red("CID error :", err));
       console.log(chalk.gray(`Trying to get the CID again...`));
-      await driver.sleep(2000);
+      await driver.sleep(2500*slowFactor);
       if (!roomLink) {
         console.log(chalk.cyan.bold(`No Room-link element found!`));
         roomLink = await helpers.waitForElementsChild(driver, room, `./img`);
@@ -298,7 +394,6 @@ async function scrape(counts) {
       CID = await roomLink.getAttribute("id");
     }
 
-   
     // PRINT Status: CID
     if (CID) console.log(chalk.cyan("CID found:", CID));
 
@@ -418,7 +513,7 @@ async function confirmFileDownloaded(fileName) {
           } else if (err) {
             currentTime = Date.now();
             // console.log({ currentTime: Date.now() });
-            if (currentTime - startTime > 11000) {
+            if (currentTime - startTime > (11000*slowFactor*dlFactor)) {
               clearInterval(fileCheckerInterval);
               resolve();
             }
@@ -449,7 +544,7 @@ async function confirmCSVDownloaded(fileName) {
           } else if (err) {
             currentTime = Date.now();
             // console.log({ currentTime: Date.now() });
-            if (currentTime - startTime > 7000) {
+            if (currentTime - startTime > (7000 * slowFactor*dlFactor)) {
               clearInterval(fileCheckerInterval);
               resolve();
             }
@@ -464,32 +559,45 @@ async function confirmCSVDownloaded(fileName) {
 async function recursiveScrape(counts) {
   try {
     const scrapeData = await scrape(counts);
-    console.log("scrape data: ", { scrapeData });
-    if (scrapeData.document !== null) {
-      const {
-        projectName,
-        subjectName,
-        topicName,
-        roomName,
-      } = scrapeData.document;
-      const srcPath = `/Users/${process.env.whoami}/Downloads/${roomName}.jno`;
-      const CSVsrcPatch = `/Users/${process.env.whoami}/Downloads/${roomName}_multicolumn.csv`;
-      const targetPath = `/Users/${process.env.whoami}/Documents/Data/21pstem/jno-scraper/ALLFiles/${projectName}/${subjectName}/${topicName}`;
-      await buildPaths(targetPath);
-      const { success, err } = await saveFile(
-        srcPath,
-        targetPath + `/${roomName}.jno`
-      );
-      const { CSVsuccess, CSVerr } = await saveFile(
-        CSVsrcPatch,
-        targetPath + `/${roomName}.csv`
-      );
-      if (err || CSVerr) {
-        scrapeData.document.error = err + CSVerr;
-      }
-      await saveToDb(scrapeData.document);
-      console.log(chalk.blue("saved to db"));
+    let run;
+    if (!runTime) {
+      runTime = Date.now();
+    } else {
+      run = Date.now();
+      run -= runTime;
     }
+    runTime = Date.now();
+    let endTime = runTime - startTime;
+    console.log(chalk.magenta("Iteration: ", run / 1000));
+    console.log(chalk.magenta("Runtime: ", endTime / 1000));
+    console.log("scrape data: ", { scrapeData });
+    if (scrapeData) {
+      if (scrapeData.document !== null) {
+        const {
+          projectName,
+          subjectName,
+          topicName,
+          roomName,
+        } = scrapeData.document;
+        const srcPath = `/Users/${process.env.whoami}/Downloads/${roomName}.jno`;
+        const CSVsrcPatch = `/Users/${process.env.whoami}/Downloads/${roomName}_multicolumn.csv`;
+        const targetPath = `/Users/${process.env.whoami}/Documents/Data/21pstem/jno-scraper/ALLFiles/${projectName}/${subjectName}/${topicName}`;
+        await buildPaths(targetPath);
+        const { success, err } = await saveFile(
+          srcPath,
+          targetPath + `/${roomName}.jno`
+        );
+        const { CSVsuccess, CSVerr } = await saveFile(
+          CSVsrcPatch,
+          targetPath + `/${roomName}.csv`
+        );
+        if (err || CSVerr) {
+          scrapeData.document.error = err + CSVerr;
+        }
+        await saveToDb(scrapeData.document);
+        console.log(chalk.blue("saved to db"));
+      }
+    } // else if (!scrapeData) scrapeData.counts = counts;
     if (scrapeData.counts.projectCount > projectCountTarget) {
       console.log(chalk.green.bold("Scrape complete!"));
       mongoose.connection.close();
@@ -499,7 +607,7 @@ async function recursiveScrape(counts) {
       recursiveScrape(updatedCounts);
     }
   } catch (err) {
-    console.log(chalk.red("Error"));
+    console.log(chalk.red("Error in scrape"));
     console.log({ err });
   }
 }
@@ -612,13 +720,11 @@ function updateCounts({ roomCount, topicCount, subjectCount, projectCount }) {
     projectCount += 1;
     currentSubjectCountTarget = null;
   }
-  console.log({
-    updatedCounts: {
-      roomCount,
-      topicCount,
-      subjectCount,
-      projectCount,
-    },
+  console.log(chalk.magenta("updatedCounts: "), {
+    roomCount,
+    topicCount,
+    subjectCount,
+    projectCount,
   });
   return { roomCount, topicCount, subjectCount, projectCount };
 }
@@ -629,10 +735,11 @@ mongoose.connect(mongoURI, { useNewUrlParser: true }, (err, res) => {
     console.log(chalk.red("DB CONNECTION FAILED: " + err));
   } else {
     console.log(chalk.blue("DB CONNECTION SUCCESS" + mongoURI));
-    let projectCount = 1; // start at 1 because 0 is "All" we dont want all we want each project individually so we get its actual name instead of the name "All"
+    // Starting scrape position
+    let projectCount = 37; // start at 1 because 0 is "All" we dont want all we want each project individually so we get its actual name instead of the name "All"
     let subjectCount = 0;
-    let topicCount = 0;
-    let roomCount = 0;
+    let topicCount = 3;
+    let roomCount = 1;
     const counts = { projectCount, subjectCount, topicCount, roomCount };
     console.log("Counts:", counts);
     console.log(
